@@ -1,9 +1,9 @@
 # common
 **/*.out
-**/*.exe
+# **/*.exe
 **/*.pdb
 **/*.ilk
-**/*.exp
+# **/*.exp
 **/*.lib
 **/__pycache__
 **/legacy
