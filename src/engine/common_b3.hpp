@@ -40,28 +40,26 @@ constexpr uint64_t LEGAL_UNDEFINED_B3 = 0x0000001818000000ULL;
 constexpr uint64_t INVALID_MASK_B3 = 0xC3810000000081C3ULL;
 
 // cell type masks
-constexpr int N_CELL_TYPE_B3 = 10;
+constexpr int N_CELL_TYPE_B3 = 6;
 constexpr uint64_t cell_type_mask_b3[N_CELL_TYPE_B3] = {
     0x2400810000810024ULL & ~INVALID_MASK_B3, // corner
     0x1842008181004218ULL & ~INVALID_MASK_B3, // C
     0x003C424242423C00ULL & ~INVALID_MASK_B3, // X
-    0x0024420000422400ULL & ~INVALID_MASK_B3, // a
-    0x0018004242001800ULL & ~INVALID_MASK_B3, // b
     0x0000240000240000ULL & ~INVALID_MASK_B3, // box corner
     0x0000182424180000ULL & ~INVALID_MASK_B3, // box edge
-    0x0000001818000000ULL                    // center (unchanged)
+    0x0000001818000000ULL                     // center (unchanged)
 };
 
 // cell type map
 constexpr int cell_type_b3[HW2_B3] = {
-    -1, -1, 2, 3, 3, 2, -1, -1,
-    -1, 4, 5, 6, 6, 5, 4, -1,
-     2, 5, 7, 8, 8, 7, 5, 2,
-     3, 6, 8, 9, 9, 8, 6, 3,
-     3, 6, 8, 9, 9, 8, 6, 3,
-     2, 5, 7, 8, 8, 7, 5, 2,
-    -1, 4, 5, 6, 6, 5, 4, -1,
-    -1, -1, 2, 3, 3, 2, -1, -1
+    -1, -1, 0, 1, 1, 0, -1, -1,
+    -1, 1, 2, 2, 2, 2, 1, -1,
+     0, 2, 3, 4, 4, 3, 2, 0,
+     1, 2, 4, 5, 5, 4, 2, 1,
+     1, 2, 4, 5, 5, 4, 2, 1,
+     0, 2, 3, 4, 4, 3, 2, 0,
+    -1, 1, 2, 2, 2, 2, 1, -1,
+    -1, -1, 0, 1, 1, 0, -1, -1
 };
 /*
     @brief bits around the cell are set (Board3)
