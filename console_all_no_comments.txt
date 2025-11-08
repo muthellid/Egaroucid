@@ -1,0 +1,4573 @@
+
+// ===== FILE: Egaroucid/src/console/close.hpp =====
+
+/*
+    Egaroucid Project
+
+    @file close.hpp
+        Closing process for Egaroucid
+    @date 2021-2025
+    @author Takuto Yamana
+    @license GPL-3.0-or-later
+*/
+
+#pragma once
+#include <iostream>
+#include "./../engine/engine_all.hpp"
+#include "option.hpp"
+#include "state.hpp"
+
+void close(State *state, Options *options) {
+    if (state->book_changed)
+        book.save_egbk3(options->book_file, options->book_file + ".bak");
+    std::exit(0);
+}
+
+// ===== FILE: Egaroucid/src/console/commandline_option.hpp =====
+
+/*
+    Egaroucid Project
+
+    @file commandline_option.hpp
+        Commandline options
+    @date 2021-2025
+    @author Takuto Yamana
+    @license GPL-3.0-or-later
+*/
+
+#pragma once
+#include <iostream>
+#include <vector>
+#include <string>
+#include <ios>
+#include <iomanip>
+#include "commandline_option_definition.hpp"
+
+struct Commandline_option {
+    int id;
+    std::vector<std::string> arg;
+
+    Commandline_option(int id_in, std::vector<std::string> arg_in) {
+        id = id_in;
+        arg = arg_in;
+    }
+};
+
+std::vector<Commandline_option> get_commandline_options(int argc, char* argv[]) {
+    std::vector<std::string> argv_string;
+    int i;
+    for (i = 0; i < argc; ++i) {
+        std::string tmp = argv[i];
+        argv_string.emplace_back(tmp);
+    }
+    std::vector<Commandline_option> res;
+    int idx = 0;
+    while (idx < argc) {
+        for (i = 0; i < N_COMMANDLINE_OPTIONS; ++i) {
+            if (std::find(commandline_option_data[i].names.begin(), commandline_option_data[i].names.end(), argv_string[idx]) != commandline_option_data[i].names.end()) {
+                std::vector<std::string> args;
+                for (int j = 0; j < commandline_option_data[i].n_args; ++j) {
+                    ++idx;
+                    if (idx >= argc) {
+                        break;
+                    }
+                    args.emplace_back(argv_string[idx]);
+                }
+                res.emplace_back(Commandline_option(commandline_option_data[i].id, args));
+                break;
+            }
+        }
+        ++idx;
+    }
+    return res;
+}
+
+bool find_commandline_option(std::vector<Commandline_option> commandline_options, int id) {
+    for (Commandline_option option: commandline_options) {
+        if (option.id == id)
+            return true;
+    }
+    return false;
+}
+
+std::vector<std::string> get_commandline_option_arg(std::vector<Commandline_option> commandline_options, int id) {
+    for (Commandline_option option: commandline_options) {
+        if (option.id == id) {
+            return option.arg;
+        }
+    }
+    std::vector<std::string> nores;
+    return nores;
+}
+
+// ===== FILE: Egaroucid/src/console/commandline_option_definition.hpp =====
+
+/*
+    Egaroucid Project
+
+    @file commandline_option_definition.hpp
+        Definition of commandline options
+    @date 2021-2025
+    @author Takuto Yamana
+    @license GPL-3.0-or-later
+*/
+
+#pragma once
+#include <string>
+#include <vector>
+
+#define N_COMMANDLINE_OPTIONS_BASE 31
+
+#ifdef INCLUDE_GGS
+    #define N_COMMANDLINE_OPTIONS (N_COMMANDLINE_OPTIONS_BASE + 6)
+#else
+    #define N_COMMANDLINE_OPTIONS N_COMMANDLINE_OPTIONS_BASE
+#endif
+
+#define ID_NONE -1
+#define ID_VERSION 0
+#define ID_HELP 1
+#define ID_LEVEL 2
+#define ID_THREAD 3
+#define ID_LOG 4
+#if USE_CHANGEABLE_HASH_LEVEL
+    #define ID_HASH 5
+#endif
+#define ID_LEVEL_INFO 6
+#define ID_BOOK_FILE 7
+#define ID_EVAL_FILE 8
+#define ID_NOBOOK 9
+#define ID_SOLVE 10
+#define ID_MODE 11
+#define ID_GTP 12
+#define ID_QUIET 13
+#define ID_SELF_PLAY 14
+#define ID_SELF_PLAY_LINE 15
+#define ID_SELF_PLAY_BOARD 16
+#define ID_PERFT 17
+#define ID_TIME_ALLOCATE 18
+#define ID_PONDER 19
+#define ID_DISABLE_AUTO_CACHE_CLEAR 20
+#define ID_NOBOARD 21
+#define ID_LOG_TO_FILE 22
+#define ID_NOAUTOPASS 23
+#define ID_SHOWVALUE 24
+#define ID_LOSSLESS_LINES 25
+#define ID_MINIMAX 26
+#define ID_SOLVE_PARALLEL_TRANSCRIPT 27
+#define ID_PLAY_LOSS 28
+#define ID_SOLVE_RANDOM 29
+#define ID_LOGDIR 30
+
+#ifdef INCLUDE_GGS
+    #define ID_GGS N_COMMANDLINE_OPTIONS_BASE
+    #define ID_GGS_LOGFILE (N_COMMANDLINE_OPTIONS_BASE + 1)
+    #define ID_GGS_LOGDIR (N_COMMANDLINE_OPTIONS_BASE + 2)
+    #define ID_GGS_GAMELOGDIR (N_COMMANDLINE_OPTIONS_BASE + 3)
+    #define ID_GGS_ACCEPT_REQUEST (N_COMMANDLINE_OPTIONS_BASE + 4)
+    #define ID_GGS_ROUTE_JOIN_TOURNAMENT (N_COMMANDLINE_OPTIONS_BASE + 5)
+#endif
+
+struct Commandline_option_info{
+    int id;
+    std::vector<std::string> names;
+    int n_args;
+    std::string arg;
+    std::string description;
+};
+
+const Commandline_option_info commandline_option_data[N_COMMANDLINE_OPTIONS] = {
+    {ID_VERSION,            {"-v", "-version"},                                 0, "",                 "Check Egaroucid for Console version"}, 
+    {ID_HELP,               {"-h", "-help", "-?"},                              0, "",                 "See help"}, 
+    {ID_LEVEL,              {"-l", "-level"},                                   1, "<level>",          "Set level to <level> (0 to 60)"}, 
+    {ID_THREAD,             {"-t", "-thread", "-threads"},                      1, "<n_threads>",      "Set number of threads (more than 0)"},
+    {ID_LOG,                {"-noise"},                                         0, "",                 "Show all logs"},
+#if USE_CHANGEABLE_HASH_LEVEL
+    {ID_HASH,               {"-hash", "-hashlevel"},                            1, "<hash_level>",     "Set hash level to <hash_level> (0 to 29)"},
+#else
+    {ID_NONE},
+#endif
+    {ID_LEVEL_INFO,         {"-linfo", "-levelinfo"},                           0, "",                 "See level information"},
+    {ID_BOOK_FILE,          {"-b", "-book"},                                    1, "<book_file>",      "Import <book_file> as Egaroucid's book"},
+    {ID_EVAL_FILE,          {"-eval", "-evaluation"},                           1, "<eval_file>",      "Import <eval_file> as Egaroucid's evaluation function"},
+    {ID_NOBOOK,             {"-nobook"},                                        0, "",                 "Run Egaroucid without book"},
+    {ID_SOLVE,              {"-s", "-solve", "-sol"},                           1, "<problem file>",   "Solve problems written in <problem file>"},
+    {ID_MODE,               {"-m", "-mode"},                                    1, "<mode>",           "Set mode to <mode> (0: You vs Egaroucid, 1: Egaroucid vs You, 2: Egaroucid vs Egaroucid, 3: You vs You)"},
+    {ID_GTP,                {"-gtp"},                                           0, "",                 "Use GTP (Go Text Protocol) mode"},
+    {ID_QUIET,              {"-q", "-quiet", "-silent"},                        0, "",                 "Quiet mode"},
+    {ID_SELF_PLAY,          {"-sf", "-selfplay"},                               2, "<n> <m>",          "Self play <n> games (play randomly first <m> moves)"},
+    {ID_SELF_PLAY_LINE,     {"-sfl", "-selfplayline"},                          1, "<file>",           "Self play with given openings"},
+    {ID_SELF_PLAY_BOARD,    {"-sfb", "-selfplayboard"},                         1, "<file>",           "Self play with given opening boards"},
+    {ID_PERFT,              {"-perft"},                                         2, "<depth> <mode>",   "Perft for Othello with <depth> in <mode>, 1: pass is counted as 1 move (normal perft), 2: pass is not counted as a move"},
+    {ID_TIME_ALLOCATE,      {"-time"},                                          1, "<seconds>",        "Time allocate <seconds> seconds. -level will be ignored"},
+    {ID_PONDER,             {"-ponder"},                                        0, "",                  "Enable ponder"},
+    {ID_DISABLE_AUTO_CACHE_CLEAR, {"-noautocacheclear"},                        0, "",                  "Disable auto cache clearing"},
+    {ID_NOBOARD,            {"-noboard"},                                       0, "",                  "Hide Board"},
+    {ID_LOG_TO_FILE,        {"-logfile"},                                       1, "<file>",            "Save search log to <file>"},
+    {ID_NOAUTOPASS,         {"-noautopass"},                                    0, "",                  "No auto-pass"},
+    {ID_SHOWVALUE,          {"-showvalue", "-showval"},                         0, "",                  "Show Value with -quiet mode"},
+    {ID_LOSSLESS_LINES,     {"-lllb", "-losslesslinesboard"},                   2, "<file> <n_discs>",  "enumerate loss-less lines to <n_discs> discs"},
+    {ID_MINIMAX,            {"-minimax"},                                       1, "<depth>",           "Minimax search from root node for <depth>"},
+    {ID_SOLVE_PARALLEL_TRANSCRIPT, {"-spt", "-solveparalleltranscript"},        1, "<file>",            "Solve problems in transcript file in parallel"},
+    {ID_PLAY_LOSS,          {"-playloss"},                                      2, "<ratio> <max_loss>","Play with loss till <max_loss> with occurance ratio <ratio> (0.0 to 1.0) can't use with time allocated"},
+    {ID_SOLVE_RANDOM,       {"-sr", "-solverandom"},                            2, "<n> <m>",           "Solve <n> boards (play randomly first <m> moves)"},
+    {ID_LOGDIR,             {"-logdir"},                                        1, "<dir>",             "Save search log to file in <dir> (-logfile is prioritized)"},
+#ifdef INCLUDE_GGS
+    {ID_GGS,                {"-ggs"},                                           2, "<username> <password>", "Use GGS (Generic Game Server) mode"},
+    {ID_GGS_LOGFILE,        {"-ggslogfile"},                                    1, "<file>",            "file for GGS client log"},
+    {ID_GGS_LOGDIR,         {"-ggslogdir"},                                     1, "<dir>",             "directory for GGS client log (-ggslogfile is prioritized)"},
+    {ID_GGS_GAMELOGDIR,     {"-ggsgamelogdir"},                                 1, "<dir>",             "directory for GGS game log"},
+    {ID_GGS_ACCEPT_REQUEST, {"-ggsacceptrequest"},                              0, "",                  "Accept GGS request"},
+    {ID_GGS_ROUTE_JOIN_TOURNAMENT, {"-ggsroutetournament"},                     0, "",                  "Send `tell /td join .N` if received it from someone"},
+#endif
+};
+
+// ===== FILE: Egaroucid/src/console/console_all.hpp =====
+
+/*
+    Egaroucid Project
+
+    @file console_all.hpp
+        Include all things about Egaroucid's console system
+    @date 2021-2025
+    @author Takuto Yamana
+    @license GPL-3.0-or-later
+*/
+
+#pragma once
+#include "board_info.hpp"
+#include "close.hpp"
+#include "command.hpp"
+#include "command_definition.hpp"
+#include "commandline_option.hpp"
+#include "commandline_option_definition.hpp"
+#include "console_common.hpp"
+#include "function.hpp"
+#ifdef INCLUDE_GGS
+    #include "ggs.hpp"
+#endif
+#include "gtp_command.hpp"
+#include "gtp_command_definition.hpp"
+#include "info.hpp"
+#include "option.hpp"
+#include "print.hpp"
+#include "state.hpp"
+#include "util.hpp"
+
+// ===== FILE: Egaroucid/src/console/console_common.hpp =====
+
+/*
+    Egaroucid Project
+
+    @file console_common.hpp
+        Common things
+    @date 2021-2025
+    @author Takuto Yamana
+    @license GPL-3.0-or-later
+*/
+
+#pragma once
+#include <iostream>
+#include <string>
+#include <filesystem>
+#ifdef _WIN64
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif
+    #include <windows.h>
+#elif _WIN32
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif
+    #if INCLUDE_GGS
+        #include <winsock2.h>
+        #include <ws2tcpip.h>
+    #endif
+    #include <windows.h>
+#elif __APPLE__ // TBD
+#else
+    #include <linux/limits.h>
+    #include <sys/types.h>
+    #include <unistd.h>
+#endif
+
+#define MODE_HUMAN_AI 0
+#define MODE_AI_HUMAN 1
+#define MODE_AI_AI 2
+#define MODE_HUMAN_HUMAN 3
+
+std::string get_parent_path(char raw_path[]) {
+    std::filesystem::path p = raw_path;
+    std::string res = p.parent_path().string() + "/";
+    return res;
+}
+
+std::string get_parent_path(wchar_t raw_path[]) {
+    std::filesystem::path p = raw_path;
+    std::string res = p.parent_path().string() + "/";
+    return res;
+}
+
+#ifdef _WIN64 // Windows
+    std::string get_binary_path() {
+        std::string res;
+        #ifdef UNICODE
+            wchar_t raw_path[MAX_PATH + 1];
+        #else
+            char raw_path[MAX_PATH + 1];
+        #endif
+        if (GetModuleFileName(NULL, raw_path, MAX_PATH))
+            res = get_parent_path(raw_path);
+        return res;
+    }
+#elif _WIN32
+    std::string get_binary_path() {
+        std::string res;
+        #ifdef UNICODE
+            wchar_t raw_path[MAX_PATH + 1];
+        #else
+            char raw_path[MAX_PATH + 1];
+        #endif
+        if (GetModuleFileName(NULL, raw_path, MAX_PATH))
+            res = get_parent_path(raw_path);
+        return res;
+    }
+#elif __APPLE__ // Mac TBD
+    std::string get_binary_path() {
+        std::string res;
+        return res;
+    }
+#else // Linux
+    std::string get_binary_path() {
+        char raw_path[PATH_MAX + 1];
+        const size_t LINKSIZE = 100;
+        char link[LINKSIZE];
+        snprintf(link, LINKSIZE, "/proc/%d/exe", getpid());
+        ssize_t e = readlink(link, raw_path, PATH_MAX);
+        if (e == -1) {
+            std::cerr << "[ERROR] can't get binary path. You can ignore this error." << std::endl;
+            return "";
+        }
+        std::string res = get_parent_path(raw_path);
+        return res;
+    }
+#endif
+
+// ===== FILE: Egaroucid/src/console/ggs.hpp =====
+
+/*
+    Egaroucid Project
+
+    @file ggs.hpp
+        Telnet client for Generic Game Server https://skatgame.net/mburo/ggs/
+    @date 2021-2025
+    @author Takuto Yamana
+    @license GPL-3.0-or-later
+*/
+#pragma once
+#include "./../engine/engine_all.hpp"
+#include "option.hpp"
+#include "util.hpp"
+#pragma comment(lib, "ws2_32.lib")
+
+#define GGS_URL "skatgame.net"
+#define GGS_PORT 5000
+#define GGS_READY "READY"
+#define GGS_REPLY_HEADER "GGS RECV> "
+#define GGS_SEND_HEADER "GGS SEND> "
+#define GGS_INFO_HEADER "GGS INFO> "
+
+#define GGS_NON_SYNCHRO_ID 0
+
+#define GGS_SEND_EMPTY_INTERVAL 180000ULL // 3 minutes
+
+#define GGS_USE_PONDER true
+#define GGS_N_PONDER_PARALLEL 1
+
+
+struct GGS_Board {
+    std::string game_id;
+    bool is_synchro;
+    int synchro_id;
+    int last_move;
+    std::string player_black;
+    uint64_t remaining_seconds_black;
+    std::string player_white;
+    uint64_t remaining_seconds_white;
+    Board board;
+    int player_to_move;
+
+    GGS_Board() {
+        game_id = "";
+        is_synchro = false;
+        synchro_id = -1;
+        last_move = -1;
+        player_black = "";
+        remaining_seconds_black = 0;
+        player_white = "";
+        remaining_seconds_white = 0;
+        board.player = 0;
+        board.opponent = 0;
+        player_to_move = -1;
+    }
+
+    bool is_valid() {
+        return (board.player != 0 || board.opponent != 0) && player_to_move != -1;
+    }
+};
+
+struct GGS_Match {
+    std::string game_id;
+    std::string initial_board;
+    std::string transcript;
+    int result_black;
+    std::string player_black;
+    std::string player_white;
+    
+    void init() {
+        game_id = "";
+    }
+
+    bool is_initialized() {
+        return game_id == "";
+    }
+};
+
+void ggs_print_send(std::string str, Options *options) { // cyan
+    std::stringstream ss(str);
+    std::string line;
+    std::ofstream ofs;
+    if (options->ggs_log_to_file) {
+        ofs.open(options->ggs_log_file, std::ios::app);
+    }
+    std::cout << "\033[36m";
+    while (std::getline(ss, line, '\n')) {
+        std::cout << GGS_SEND_HEADER << line << std::endl;
+        if (options->ggs_log_to_file) {
+            ofs << GGS_SEND_HEADER << line << std::endl;
+        }
+    }
+    std::cout << "\033[0m";
+    if (options->ggs_log_to_file) {
+        ofs.close();
+    }
+}
+
+void ggs_print_receive(std::string str, Options *options) { // green
+    std::stringstream ss(str);
+    std::string line;
+    std::ofstream ofs;
+    if (options->ggs_log_to_file) {
+        ofs.open(options->ggs_log_file, std::ios::app);
+    }
+    std::cout << "\033[32m";
+    while (std::getline(ss, line, '\n')) {
+        std::cout << GGS_REPLY_HEADER << line << std::endl;
+        if (options->ggs_log_to_file) {
+            ofs << GGS_REPLY_HEADER << line;
+        }
+    }
+    std::cout << "\033[0m";
+    if (options->ggs_log_to_file) {
+        ofs.close();
+    }
+}
+
+void ggs_print_info(std::string str, Options *options) { // yellow
+    std::stringstream ss(str);
+    std::string line;
+    std::ofstream ofs;
+    if (options->ggs_log_to_file) {
+        ofs.open(options->ggs_log_file, std::ios::app);
+    }
+    std::cout << "\033[33m";
+    while (std::getline(ss, line, '\n')) {
+        std::cout << GGS_INFO_HEADER << line << std::endl;
+        if (options->ggs_log_to_file) {
+            ofs << GGS_INFO_HEADER << line << std::endl;
+        }
+    }
+    std::cout << "\033[0m";
+    if (options->ggs_log_to_file) {
+        ofs.close();
+    }
+}
+
+int ggs_connect(WSADATA &wsaData, struct sockaddr_in &server, SOCKET &sock) {
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+        std::cerr << "Failed to initialize Winsock. Error Code: " << WSAGetLastError() << std::endl;
+        return 1;
+    }
+
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
+        std::cerr << "Could not create socket. Error Code: " << WSAGetLastError() << std::endl;
+        WSACleanup();
+        return 1;
+    }
+
+    
+    const char* hostname = GGS_URL;
+    struct hostent* he = gethostbyname(hostname);
+    if (he == nullptr) {
+        std::cerr << "Failed to resolve hostname. Error Code: " << WSAGetLastError() << std::endl;
+        closesocket(sock);
+        WSACleanup();
+        return 1;
+    }
+
+    server.sin_addr.s_addr = *(u_long*)he->h_addr_list[0];
+    server.sin_family = AF_INET;
+    server.sin_port = htons(GGS_PORT);
+    
+    /*
+    const char* hostname = GGS_URL;
+    struct addrinfo hints, *result;
+    ZeroMemory(&hints, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    if (getaddrinfo(hostname, std::to_string(GGS_PORT).c_str(), &hints, &result) != 0) {
+        std::cerr << "Failed to resolve hostname. Error Code: " << WSAGetLastError() << std::endl;
+        closesocket(sock);
+        WSACleanup();
+        return 1;
+    }
+
+    memcpy(&server, result->ai_addr, result->ai_addrlen);
+    freeaddrinfo(result);
+    */
+
+    if (connect(sock, (struct sockaddr*)&server, sizeof(server)) < 0) {
+        std::cerr << "Connection failed. Error Code: " << WSAGetLastError() << std::endl;
+        closesocket(sock);
+        WSACleanup();
+        return 1;
+    }
+    return 0;
+}
+
+void ggs_close(SOCKET &sock) {
+    closesocket(sock);
+    WSACleanup();
+}
+
+int ggs_send_message(SOCKET &sock, std::string msg, Options *options) {
+    if (send(sock, msg.c_str(), msg.length(), 0) < 0) {
+        return 1;
+    }
+    ggs_print_send(msg, options);
+    return 0;
+}
+
+std::vector<std::string> ggs_receive_message(SOCKET *sock, Options *options) {
+    char server_reply[20000];
+    int recv_size;
+    std::vector<std::string> res;
+    if ((recv_size = recv(*sock, server_reply, 20000, 0)) == SOCKET_ERROR) {
+        std::cerr << "Recv failed. Error Code: " << WSAGetLastError() << std::endl;
+    } else {
+        server_reply[recv_size] = '\0';
+        res = split_by_delimiter(server_reply, GGS_READY);
+        ggs_print_receive(server_reply, options);
+    }
+    return res;
+}
+
+std::string ggs_get_os_info(std::string str) {
+    std::stringstream ss(str);
+    std::string line;
+    while (std::getline(ss, line, '\n')) {
+        if (line.substr(0, 4) == "/os:") {
+            return line;
+        }
+    }
+    return "";
+}
+
+std::string ggs_get_user_input() {
+    std::string res;
+    std::getline(std::cin, res);
+    return res;
+}
+
+bool ggs_is_match_start(std::string line, std::string username) {
+    std::vector<std::string> words = split_by_space(line);
+    if (std::find(words.begin(), words.end(), username) != words.end()) {
+        if (words.size() >= 3) {
+            return words[1] == "+" && words[2] == "match";
+        }
+    }
+    return false;
+}
+
+bool ggs_is_match_end(std::string line, std::string username) {
+    std::vector<std::string> words = split_by_space(line);
+    if (std::find(words.begin(), words.end(), username) != words.end()) {
+        if (words.size() >= 3) {
+            return words[1] == "-" && words[2] == "match";
+        }
+    }
+    return false;
+}
+
+bool ggs_is_board_info(std::string line) {
+    std::vector<std::string> words = split_by_space(line);
+    if (words.size() >= 2) {
+        return words[1] == "update" || words[1] == "join";
+    }
+    return false;
+}
+
+bool ggs_is_match_request(std::string line, std::string username) {
+    std::vector<std::string> words = split_by_space(line);
+    if (words.size() >= 10) {
+        return words[1] == "+" && (words[7] == "R" || words[7] == "S") && (words[4] == username || words[9] == username);
+    }
+    return false;
+}
+
+std::string ggs_match_request_get_id(std::string line) {
+    std::vector<std::string> words = split_by_space(line);
+    if (words.size() >= 3) {
+        return words[2];
+    }
+    return "";
+}
+
+bool ggs_is_join_tournament_message(std::string line) {
+    std::vector<std::string> words = split_by_space(line);
+    if (words.size() >= 5) {
+        return (words[1] == "tell" || words[1] == "t") && words[2] == "/td" && words[3] == "join";
+    }
+    return false;
+}
+
+std::string ggs_join_tournament_get_cmd(std::string line) {
+    std::vector<std::string> words = split_by_space(line);
+    std::string res = "";
+    for (int i = 1; i < 5; ++i) {
+        res += words[i];
+        res += " ";
+    }
+    return res;
+}
+
+std::string ggs_board_get_id(std::string line) {
+    std::vector<std::string> words = split_by_space(line);
+    if (words.size() >= 3) {
+        return words[2];
+    }
+    return "";
+}
+
+GGS_Board ggs_get_board(std::string str) {
+    GGS_Board res;
+    std::string os_info = ggs_get_os_info(str);
+    std::vector<std::string> os_info_words = split_by_space(os_info);
+    if (os_info_words.size() < 3) {
+        std::cerr << "ggs_get_board failed: id invalid" << std::endl;
+        return res;
+    }
+    bool is_join = os_info_words[1] == "join"; // /os: join .4.1 s8r18 K?
+    res.game_id = os_info_words[2]; // /os: update .4.1 s8r18 K?
+    int game_id_dot_count = 0;
+    for (int i = 0; (i = res.game_id.find('.', i)) != std::string::npos; i++) {
+        game_id_dot_count++;
+    }
+    res.is_synchro = game_id_dot_count == 2;
+    if (res.is_synchro) {
+        std::vector<std::string> ids = split_by_delimiter(res.game_id, ".");
+        try {
+            res.synchro_id = std::stoi(ids[ids.size() - 1]);
+        } catch (const std::invalid_argument& e) {
+            std::cerr << "ggs_get_board failed: synchro_id invalid" << std::endl;
+            res.synchro_id = -1;
+        } catch (const std::out_of_range& e) {
+            std::cerr << "ggs_get_board failed: synchro_id out of range" << std::endl;
+            res.synchro_id = -1;
+        }
+    }
+    std::string board_str;
+    std::stringstream ss(str);
+    std::string line;
+    int n_board_identifier_found = 0;
+    int n_board_identifier_used = 1;
+    while (std::getline(ss, line, '\n')) {
+        std::vector<std::string> words = split_by_space(line);
+        if (line[0] == '|') {
+            if (line.find(" move(s)") != std::string::npos) {
+                if (line.substr(0, 10) != "|0 move(s)") { // happens in stored game
+                    std::string line2;
+                    while (line2.substr(0, 10) != "|* to move" && line2.substr(0, 10) != "|O to move") {
+                        std::getline(ss, line2, '\n'); // skip starting board
+                    }
+                }
+                continue;
+            }
+            if (line.find("A B C D E F G H") != std::string::npos) {
+                ++n_board_identifier_found;
+                continue;
+            }
+            if (n_board_identifier_found == 1) { // board info
+                std::string board_str_part;
+                for (char c : line) {
+                    if (c == '-' || c == '*' || c == 'O') {
+                        board_str_part += c;
+                    }
+                }
+                board_str += remove_spaces(board_str_part);
+                continue;
+            }
+
+            if (line.substr(0, 10) == "|* to move") {
+                res.player_to_move = BLACK;
+                continue;
+            } else if (line.substr(0, 10) == "|O to move") {
+                res.player_to_move = WHITE;
+                continue;
+            }
+
+            if (!is_join) {
+                if (line.substr(0, 2) == "| ") {
+                    if (words.size() >= 3) {
+                        if (words[1][words[1].size() - 1] == ':' && words[2].size() >= 2) {
+                            res.last_move = get_coord_from_chars(words[2][0], words[2][1]);
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            if (words.size() >= 4) {
+                std::string player_id = words[0].substr(1, words[0].size() - 1);
+                std::string remaining_time_minute = words[3].substr(0, 2);
+                std::string remaining_time_second = words[3].substr(3, 2);
+                uint64_t remaining_seconds = std::stoi(remaining_time_minute) * 60 + std::stoi(remaining_time_second);
+                if (words[2][0] == '*') {
+                    res.player_black = player_id;
+                    res.remaining_seconds_black = remaining_seconds;
+                } else if (words[2][0] == 'O') {
+                    res.player_white = player_id;
+                    res.remaining_seconds_white = remaining_seconds;
+                }
+            }
+        }
+    }
+    if (res.player_to_move == BLACK) {
+        board_str += " *";
+    } else if (res.player_to_move == WHITE) {
+        board_str += " O";
+    }
+    res.board.from_str(board_str);
+
+
+    return res;
+}
+
+Search_result ggs_search(GGS_Board ggs_board, Options *options, thread_id_t thread_id, bool *searching) {
+    Search_result search_result;
+    if (ggs_board.board.get_legal()) {
+
+        uint64_t remaining_time_msec = 0;
+        if (ggs_board.player_to_move == BLACK) {
+            remaining_time_msec = ggs_board.remaining_seconds_black * 1000;
+        } else {
+            remaining_time_msec = ggs_board.remaining_seconds_white * 1000;
+        }
+        if (remaining_time_msec > 5000) {
+            remaining_time_msec -= 5000;
+        } else {
+            remaining_time_msec = std::max<uint64_t>(remaining_time_msec * 0.1, 1ULL);
+        }
+
+        uint64_t strt = tim();
+        remaining_time_msec -= tim() - strt;
+
+        search_result = ai_time_limit(ggs_board.board, true, 0, true, options->show_log, remaining_time_msec, thread_id, searching);
+    } else { // pass
+        search_result.policy = MOVE_PASS;
+    }
+    return search_result;
+}
+
+void ggs_send_move(GGS_Board &ggs_board, SOCKET &sock, Search_result search_result, Options *options) {
+    std::string ggs_move_cmd;
+    if (search_result.policy == MOVE_PASS) {
+        ggs_move_cmd = "t /os play " + ggs_board.game_id + " pa";
+    } else {
+        ggs_move_cmd = "t /os play " + ggs_board.game_id + " " + idx_to_coord(search_result.policy) + "/" + std::to_string(search_result.value);
+    }
+    ggs_send_message(sock, ggs_move_cmd + "\n", options);
+}
+
+void ggs_start_ponder(std::future<std::vector<Ponder_elem>> ponder_futures[][GGS_N_PONDER_PARALLEL], Board board, bool show_log, int synchro_id, bool ponder_searchings[]) {
+    ponder_searchings[synchro_id] = true;
+    for (int ponder_i = 0; ponder_i < GGS_N_PONDER_PARALLEL; ++ponder_i) {
+        ponder_futures[synchro_id][ponder_i] = std::async(std::launch::async, ai_ponder, board, show_log, synchro_id, &ponder_searchings[synchro_id]); // set ponder
+    }
+}
+
+void ggs_terminate_ponder(std::future<std::vector<Ponder_elem>> ponder_futures[][GGS_N_PONDER_PARALLEL], bool ponder_searchings[], int synchro_id) {
+    ponder_searchings[synchro_id] = false; // terminate ponder
+    std::vector<std::vector<Ponder_elem>> results;
+    for (int ponder_i = 0; ponder_i < GGS_N_PONDER_PARALLEL; ++ponder_i) {
+        if (ponder_futures[synchro_id][ponder_i].valid()) {
+            results.emplace_back(ponder_futures[synchro_id][ponder_i].get());
+        }
+    }
+    for (std::vector<Ponder_elem> result: results) {
+        print_ponder_result(result);
+    }
+}
+
+void ggs_client(Options *options) {
+    WSADATA wsaData;
+    SOCKET sock;
+    struct sockaddr_in server;
+    
+    if (ggs_connect(wsaData, server, sock) != 0) {
+        std::cout << "[ERROR] [FATAL] Failed to Connect" << std::endl;
+        return;
+    }
+    ggs_print_info("Connected to server!", options);
+    ggs_receive_message(&sock, options);
+
+    ggs_send_message(sock, options->ggs_username + "\n", options);
+    ggs_receive_message(&sock, options);
+    ggs_send_message(sock, options->ggs_password + "\n", options);
+    ggs_receive_message(&sock, options);
+
+    ggs_send_message(sock, "ms /os\n", options);
+    ggs_receive_message(&sock, options);
+    ggs_send_message(sock, "ts client -\n", options);
+    ggs_receive_message(&sock, options);
+    
+    std::future<std::string> user_input_f;
+    std::future<std::vector<std::string>> ggs_message_f;
+    std::future<Search_result> ai_futures[2];
+    bool ai_searchings[2] = {false, false};
+    GGS_Board ggs_boards_searching[2];
+    std::future<std::vector<Ponder_elem>> ponder_futures[2][GGS_N_PONDER_PARALLEL];
+    bool ponder_searchings[2] = {false, false};
+    GGS_Board ggs_boards[2][HW2 + 1];
+    int ggs_boards_n_discs[2] = {0, 0};
+    bool match_playing = false;
+    int thread_sizes[2];
+    int thread_sizes_before[2];
+    for (int i = 0; i < 2; ++i) {
+        thread_sizes[i] = 0;
+    }
+    bool playing_synchro_game = false;
+    bool playing_same_board = true;
+    GGS_Match matches[2];
+    for (int i = 0; i < 2; ++i) {
+        matches[i].init();
+    }
+    uint64_t last_sent_time = tim();
+    while (true) {
+        if (tim() - last_sent_time > GGS_SEND_EMPTY_INTERVAL) {
+            ggs_send_message(sock, "\n", options);
+            last_sent_time = tim();
+        }
+        if (user_input_f.valid()) {
+            if (user_input_f.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+                std::string user_input = user_input_f.get();
+                ggs_send_message(sock, user_input + "\n", options);
+                last_sent_time = tim();
+                if (user_input == "quit") {
+                    global_searching = false;
+                    for (int ai_i = 0; ai_i < 2; ++ai_i) {
+                        if (ai_futures[ai_i].valid()) {
+                            ai_futures[ai_i].get();
+                        }
+                        for (int ponder_i = 0; ponder_i < GGS_N_PONDER_PARALLEL; ++ponder_i) {
+                            if (ponder_futures[ai_i][ponder_i].valid()) {
+                                ponder_futures[ai_i][ponder_i].get();
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+        } else {
+            user_input_f = std::async(std::launch::async, ggs_get_user_input);
+        }
+        if (match_playing) {
+            for (int i = 0; i < 2; ++i) {
+                if (ai_searchings[i]) {
+                    if (ai_futures[i].valid()) {
+                        if (ai_futures[i].wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+                            Search_result search_result = ai_futures[i].get();
+                            ai_searchings[i] = false;
+                            ggs_send_move(ggs_boards_searching[i], sock, search_result, options);
+                            last_sent_time = tim();
+                        }
+                    }
+                }
+            }
+            for (int i = 0; i < 2; ++i) {
+                if (ponder_searchings[i]) {
+                    for (int ponder_i = 0; ponder_i < GGS_N_PONDER_PARALLEL; ++ponder_i) {
+                        if (ponder_futures[i][ponder_i].valid()) {
+                            if (ponder_futures[i][ponder_i].wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+                                ponder_futures[i][ponder_i].get();
+                                ponder_searchings[i] = false;
+                                ggs_print_info("ponder end " + std::to_string(i), options);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        std::vector<std::string> server_replies;
+        if (ggs_message_f.valid()) {
+            if (ggs_message_f.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+                server_replies = ggs_message_f.get();
+            }
+        } else {
+            ggs_message_f = std::async(std::launch::async, ggs_receive_message, &sock, options); // ask ggs message
+        }
+        bool new_calculation_start = false;
+        if (server_replies.size()) {
+            for (std::string server_reply: server_replies) {
+                if (server_reply.size()) {
+                    std::string os_info = ggs_get_os_info(server_reply);
+                    if (ggs_is_match_start(os_info, options->ggs_username)) {
+                        ggs_print_info("match start!", options);
+                        match_playing = true;
+                        playing_same_board = true;
+                        for (int i = 0; i < 2; ++i) {
+                            ai_searchings[i] = false;
+                            ponder_searchings[i] = false;
+                        }
+                        for (int i = 0; i < 2; ++i) {
+                            matches[i].init();
+                        }
+                    }
+                }
+            }
+            for (std::string server_reply: server_replies) {
+                if (server_reply.size()) {
+                    std::string os_info = ggs_get_os_info(server_reply);
+                    if (ggs_is_board_info(os_info)) {
+                        GGS_Board ggs_board = ggs_get_board(server_reply);
+                        if (ggs_board.is_valid()) {
+                            if (ggs_board.player_black == options->ggs_username || ggs_board.player_white == options->ggs_username) { // related to me
+                                ggs_print_info("ggs board synchro id " + std::to_string(ggs_board.synchro_id), options);
+                                if (ggs_board.is_synchro) { // synchro game
+                                    int n_discs = ggs_board.board.n_discs();
+                                    ggs_boards[ggs_board.synchro_id][n_discs] = ggs_board;
+                                    ggs_boards_n_discs[ggs_board.synchro_id] = n_discs;
+                                }
+                                int match_idx = GGS_NON_SYNCHRO_ID;
+                                if (ggs_board.is_synchro) {
+                                    match_idx = ggs_board.synchro_id;
+                                }
+                                if (matches[match_idx].is_initialized()) {
+                                    matches[match_idx].game_id = ggs_board.game_id;
+                                    matches[match_idx].player_black = ggs_board.player_black;
+                                    matches[match_idx].player_white = ggs_board.player_white;
+                                    matches[match_idx].initial_board = ggs_board.board.to_str(ggs_board.player_to_move);
+                                    matches[match_idx].result_black = -99;
+                                    matches[match_idx].transcript = "";
+                                }
+                                ggs_print_info("match log received " + std::to_string(match_idx) + " " + std::to_string(ggs_board.last_move) + " " + idx_to_coord(ggs_board.last_move), options);
+                                if (is_valid_policy(ggs_board.last_move)) {
+                                    matches[match_idx].transcript += idx_to_coord(ggs_board.last_move);
+                                    if (
+                                        (ggs_board.player_to_move == BLACK && ggs_board.player_black == options->ggs_username) || 
+                                        (ggs_board.player_to_move == WHITE && ggs_board.player_white == options->ggs_username)
+                                    ) {
+                                        std::cerr << "opponent moved " << idx_to_coord(ggs_board.last_move) << std::endl;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            for (std::string server_reply: server_replies) {
+                if (server_reply.size()) {
+                    std::string os_info = ggs_get_os_info(server_reply);
+                    if (ggs_is_match_end(os_info, options->ggs_username)) {
+                        ggs_print_info("match end!", options);
+                        match_playing = false;
+                        for (int i = 0; i < 2; ++i) {
+                            ai_searchings[i] = false;
+                            ponder_searchings[i] = false;
+                        }
+                        if (options->ggs_game_log_to_file) {
+                            for (int i = 0; i < 2; ++i) {
+                                if (!matches[i].is_initialized()) {
+                                    std::string datetime = get_current_datetime_for_file();
+                                    std::string filename = options->ggs_game_log_dir + "/" + datetime + "_" + matches[i].game_id + ".txt";
+                                    std::ofstream ofs(filename, std::ios::app);
+                                    if (!ofs) {
+                                        ggs_print_info("Can't open gamelog file " + filename, options);
+                                    } else {
+                                        int black_score = 0;
+                                        Board board(matches[i].initial_board);
+                                        int player_sgn = matches[i].initial_board[matches[i].initial_board.size() - 1] == 'X' ? 1 : -1;
+                                        Flip flip;
+                                        for (int j = 0; j < matches[i].transcript.size(); j += 2) {
+                                            if (board.get_legal() == 0) {
+                                                board.pass();
+                                                player_sgn *= -1;
+                                            }
+                                            int coord = get_coord_from_chars(matches[i].transcript[j], matches[i].transcript[j + 1]);
+                                            calc_flip(&flip, &board, coord);
+                                            board.move_board(&flip);
+                                            player_sgn *= -1;
+                                        }
+                                        if (board.is_end()) {
+                                            matches[i].result_black = player_sgn * board.score_player();
+                                        } else {
+                                            matches[i].result_black = -99;
+                                        }
+                                        ofs << matches[i].game_id << std::endl;
+                                        ofs << "black: " << matches[i].player_black << std::endl;
+                                        ofs << "white: " << matches[i].player_white << std::endl;
+                                        ofs << "initial board: " << matches[i].initial_board << std::endl;
+                                        ofs << "transcript: " << matches[i].transcript << std::endl;
+                                        ofs << "black's score: " << matches[i].result_black << std::endl;
+                                        ofs.close();
+                                    }
+                                }
+                            }
+                        }
+                        transposition_table.init();
+                        ggs_print_info("clearned TT up", options);
+                    }
+                }
+            }
+            if (options->ggs_accept_request) {
+                if (!match_playing) {
+                    for (std::string server_reply: server_replies) {
+                        if (server_reply.size()) {
+                            std::string os_info = ggs_get_os_info(server_reply);
+                            if (ggs_is_match_request(os_info, options->ggs_username)) {
+                                std::string request_id = ggs_match_request_get_id(os_info);
+                                std::string accept_cmd = "ts accept " + request_id;
+                                ggs_send_message(sock, accept_cmd + "\n", options);
+                                last_sent_time = tim();
+                                ggs_print_info("match request accepted " + request_id, options);
+                            }
+                        }
+                    }
+                }
+            }
+            if (options->ggs_route_join_tournament) {
+                for (std::string server_reply: server_replies) {
+                    if (server_reply.size()) {
+                        if (ggs_is_join_tournament_message(server_reply)) {
+                            std::string join_tournament_cmd = ggs_join_tournament_get_cmd(server_reply);
+                            ggs_send_message(sock, join_tournament_cmd + "\n", options);
+                            last_sent_time = tim();
+                            ggs_print_info("join tournament " + join_tournament_cmd, options);
+                        }
+                    }
+                }
+            }
+            for (std::string server_reply: server_replies) {
+                if (server_reply.size()) {
+                    std::string os_info = ggs_get_os_info(server_reply);
+                    if (ggs_is_board_info(os_info)) {
+                        GGS_Board ggs_board = ggs_get_board(server_reply);
+                        if (ggs_board.is_valid()) {
+                            if (ggs_board.player_black == options->ggs_username || ggs_board.player_white == options->ggs_username) { // related to me
+                                bool need_to_move = 
+                                    (ggs_board.player_black == options->ggs_username && ggs_board.player_to_move == BLACK) || 
+                                    (ggs_board.player_white == options->ggs_username && ggs_board.player_to_move == WHITE);
+                                if (ggs_board.is_synchro) { // synchro game
+                                    playing_synchro_game = true;
+                                    int n_discs = ggs_board.board.n_discs();
+                                    if (playing_same_board && (ggs_boards[0][n_discs].board == ggs_boards[1][n_discs].board || ggs_boards_n_discs[ggs_board.synchro_id] != ggs_boards_n_discs[ggs_board.synchro_id ^ 1])) {
+                                    } else {
+                                        playing_same_board = false;
+                                    }
+                                    if (need_to_move) { // Egaroucid should move
+                                        ggs_terminate_ponder(ponder_futures, ponder_searchings, ggs_board.synchro_id);
+                                        if (!ggs_board.board.is_end()) {
+                                            ai_searchings[ggs_board.synchro_id] = true;
+                                            ggs_boards_searching[ggs_board.synchro_id] = ggs_board;
+#if GGS_USE_PONDER
+                                            ai_futures[ggs_board.synchro_id] = std::async(std::launch::async, ggs_search, ggs_board, options, ggs_board.synchro_id, &ai_searchings[ggs_board.synchro_id]); // set search
+#else
+                                            ai_futures[ggs_board.synchro_id] = std::async(std::launch::async, ggs_search, ggs_board, options, THREAD_ID_NONE, &ai_searchings[ggs_board.synchro_id]); // set search
+#endif
+                                            new_calculation_start = true;
+                                            std::string msg = "Egaroucid thinking... " + ggs_board.game_id + " " + ggs_board.board.to_str(ggs_board.player_to_move);
+                                            ggs_print_info(msg, options);
+                                        }
+                                    } else { // Opponent's move
+#if GGS_USE_PONDER
+                                        if (!ggs_board.board.is_end()) {
+                                            ggs_start_ponder(ponder_futures, ggs_board.board, options->show_log, ggs_board.synchro_id, ponder_searchings);
+                                            new_calculation_start = true;
+                                            std::string msg = "Egaroucid pondering... " + ggs_board.game_id + " " + ggs_board.board.to_str(ggs_board.player_to_move);
+                                            ggs_print_info(msg, options);
+                                        }
+#endif
+                                    }
+                                } else { // non-synchro game
+                                    playing_synchro_game = false;
+                                    if (need_to_move) { // Egaroucid should move
+                                        ggs_terminate_ponder(ponder_futures, ponder_searchings, GGS_NON_SYNCHRO_ID);
+                                        if (!ggs_board.board.is_end()) {
+                                            ai_searchings[GGS_NON_SYNCHRO_ID] = true;
+                                            ggs_boards_searching[GGS_NON_SYNCHRO_ID] = ggs_board;
+                                            ai_futures[GGS_NON_SYNCHRO_ID] = std::async(std::launch::async, ggs_search, ggs_board, options, THREAD_ID_NONE, &ai_searchings[GGS_NON_SYNCHRO_ID]); // set search
+                                        }
+                                    } else { // Opponent's move
+#if GGS_USE_PONDER
+                                        if (!ggs_board.board.is_end()) {
+                                            ggs_start_ponder(ponder_futures, ggs_board.board, options->show_log, ggs_board.synchro_id, ponder_searchings);
+                                        }
+#endif
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+#if GGS_USE_PONDER
+        thread_sizes_before[0] = thread_sizes[0];
+        thread_sizes_before[1] = thread_sizes[1];
+        if (playing_synchro_game) {
+            int full_threads = thread_pool.size();
+            int full_threads_enhanced = std::max((int)(full_threads * 1.2), full_threads + 3);
+            int reduced_threads = full_threads_enhanced / 2;
+            int prioritized_threads = full_threads_enhanced * 0.75;
+            int non_prioritized_threads = full_threads_enhanced - prioritized_threads;
+            prioritized_threads = std::min(prioritized_threads, full_threads);
+                if (ai_searchings[0]) { // 0 is searching
+                    if (ai_searchings[1]) { // 1 is searching
+                    } else if (ponder_searchings[1]) { // 1 is pondering
+                        thread_sizes[0] = prioritized_threads;
+                        thread_sizes[1] = non_prioritized_threads;
+                    } else { // 1 is waiting
+                        thread_sizes[0] = full_threads;
+                        thread_sizes[1] = 0;
+                    }
+                } else if (ponder_searchings[0]) { // 0 is pondering
+                    if (ai_searchings[1]) { // 1 is searching
+                        thread_sizes[0] = non_prioritized_threads;
+                        thread_sizes[1] = prioritized_threads;
+                    } else if (ponder_searchings[1]) { // 1 is pondering
+                        thread_sizes[0] = reduced_threads;
+                        thread_sizes[1] = reduced_threads;
+                    } else { // 1 is waiting
+                        thread_sizes[0] = full_threads;
+                        thread_sizes[1] = 0;
+                    }
+                } else { // 0 is waiting
+                    thread_sizes[0] = 0; // off 0
+                    thread_sizes[1] = full_threads; // full threads for 1
+                }
+        } else {
+            thread_sizes[GGS_NON_SYNCHRO_ID] = thread_pool.size(); // full threads for non-synchro game
+        }
+        if (thread_sizes[0] != thread_sizes_before[0]) {
+            thread_pool.set_max_thread_size(0, thread_sizes[0]);
+        }
+        if (thread_sizes[1] != thread_sizes_before[1]) {
+            thread_pool.set_max_thread_size(1, thread_sizes[1]);
+        }
+        if (new_calculation_start || thread_sizes[0] != thread_sizes_before[0] || thread_sizes[1] != thread_sizes_before[1]) {
+            std::string msg = "thread info synchro " + std::to_string(playing_synchro_game) + " same " + std::to_string(playing_same_board) + " ai " + std::to_string(ai_searchings[0]) + " " + std::to_string(ai_searchings[1]) + " ponder " + std::to_string(ponder_searchings[0]) + " " + std::to_string(ponder_searchings[1]) + " thread size " + std::to_string(thread_sizes[0]) + " " + std::to_string(thread_sizes[1]);
+            ggs_print_info(msg, options);
+        }
+#endif
+    }
+
+    ggs_close(sock);
+}
+
+// ===== FILE: Egaroucid/src/console/gtp_command_definition.hpp =====
+
+/*
+    Egaroucid Project
+
+    @file gtp_command_definition.hpp
+        Definition of commands for GTP (Gp Text Protocol)
+    @date 2021-2025
+    @author Takuto Yamana
+    @license GPL-3.0-or-later
+*/
+
+#pragma once
+#include <string>
+#include <vector>
+#include "command_definition.hpp"
+
+#define N_GTP_COMMANDS 21
+
+#define GTP_CMD_ID_QUIT 0
+#define GTP_CMD_ID_GTP_VERSION 1
+#define GTP_CMD_ID_NAME 2
+#define GTP_CMD_ID_VERSION 3
+#define GTP_CMD_ID_KNOWN_CMD 4
+#define GTP_CMD_ID_LIST_CMD 5
+#define GTP_CMD_ID_BOARDSIZE 6
+#define GTP_CMD_ID_CLEAR_BOARD 7
+#define GTP_CMD_ID_KOMI 8
+#define GTP_CMD_ID_PLAY 9
+#define GTP_CMD_ID_GENMOVE 10
+#define GTP_CMD_ID_RULES_GAME_ID 11
+#define GTP_CMD_ID_RULES_BOARD 12
+#define GTP_CMD_ID_RULES_BOARD_SIZE 13
+#define GTP_CMD_ID_RULES_LEGAL_MOVES 14
+#define GTP_CMD_ID_RULES_SIDE_MOVE 15
+#define GTP_CMD_ID_RULES_FINAL_RESULT 16
+#define GTP_CMD_ID_SHOWBOARD 17
+#define GTP_CMD_ID_UNDO 18
+#define GTP_CMD_ID_REG_GENMOVE 19
+#define GTP_CMD_ID_LIST_GAMES 20
+
+const Command_info gtp_command_data[N_GTP_COMMANDS] = {
+    {GTP_CMD_ID_QUIT,               {"quit"},                                                   "",                 "Quit"},
+    {GTP_CMD_ID_GTP_VERSION,        {"protocol_version"},                                       "",                 "See GTP version"},
+    {GTP_CMD_ID_NAME,               {"name"},                                                   "",                 "See name"},
+    {GTP_CMD_ID_VERSION,            {"version"},                                                "",                 "See Egaroucid version"},
+    {GTP_CMD_ID_KNOWN_CMD,          {"known_command"},                                          "",                 ""},
+    {GTP_CMD_ID_LIST_CMD,           {"list_commands"},                                          "",                 ""},
+    {GTP_CMD_ID_BOARDSIZE,          {"boardsize"},                                              "",                 ""},
+    {GTP_CMD_ID_CLEAR_BOARD,        {"clear_board"},                                            "",                 ""},
+    {GTP_CMD_ID_KOMI,               {"komi"},                                                   "",                 ""},
+    {GTP_CMD_ID_PLAY,               {"play"},                                                   "",                 ""},
+    {GTP_CMD_ID_GENMOVE,            {"genmove"},                                                "",                 ""},
+    {GTP_CMD_ID_RULES_GAME_ID,      {"gogui-rules_game_id"},                                    "",                 ""},
+    {GTP_CMD_ID_RULES_BOARD,        {"gogui-rules_board"},                                      "",                 ""},
+    {GTP_CMD_ID_RULES_BOARD_SIZE,   {"gogui-rules_board_size"},                                 "",                 ""},
+    {GTP_CMD_ID_RULES_LEGAL_MOVES,  {"gogui-rules_legal_moves"},                                "",                 ""},
+    {GTP_CMD_ID_RULES_SIDE_MOVE,    {"gogui-rules_side_to_move"},                               "",                 ""},
+    {GTP_CMD_ID_RULES_FINAL_RESULT, {"gogui-rules_final_result"},                               "",                 ""},
+    {GTP_CMD_ID_SHOWBOARD,          {"showboard"},                                              "",                 ""},
+    {GTP_CMD_ID_UNDO,               {"undo"},                                                   "",                 ""},
+    {GTP_CMD_ID_REG_GENMOVE,        {"reg_genmove"},                                            "",                 ""},
+    {GTP_CMD_ID_LIST_GAMES,         {"list_games"},                                             "",                 ""}
+};
+
+// ===== FILE: Egaroucid/src/console/info.hpp =====
+
+/*
+    Egaroucid Project
+
+    @file info.hpp
+        Egaroucid for Console's software information
+    @date 2021-2025
+    @author Takuto Yamana
+    @license GPL-3.0-or-later
+*/
+
+#pragma once
+#include "./../engine/setting.hpp"
+
+#define EGAROUCID_NAME "Egaroucid for Console"
+#define EGAROUCID_CONSOLE_VERSION "0"
+#if USE_BETA_VERSION
+    const std::string EGAROUCID_VERSION = EGAROUCID_ENGINE_VERSION + (std::string)"." + EGAROUCID_CONSOLE_VERSION + (std::string)" " + EGAROUCID_ENGINE_ENV_VERSION + (std::string)" beta";
+#else
+    const std::string EGAROUCID_VERSION = EGAROUCID_ENGINE_VERSION + (std::string)"." + EGAROUCID_CONSOLE_VERSION + (std::string)" " + EGAROUCID_ENGINE_ENV_VERSION;
+#endif
+
+#define EGAROUCID_DATE "2021-2025"
+#define EGAROUCID_URL "https://www.egaroucid.nyanyan.dev/"
+#define EGAROUCID_AUTHOR "Takuto Yamana"
+#define EGAROUCID_LICENSE "GPL-3.0 license"
+
+// ===== FILE: Egaroucid/src/console/state.hpp =====
+
+/*
+    Egaroucid Project
+
+    @file state.hpp
+        State for Egaroucid
+    @date 2021-2025
+    @author Takuto Yamana
+    @license GPL-3.0-or-later
+*/
+#pragma once
+#include "./../engine/engine_all.hpp"
+
+struct State {
+    bool book_changed;
+    uint64_t remaining_time_msec_black;
+    uint64_t remaining_time_msec_white;
+    std::future<std::vector<Ponder_elem>> ponder_future;
+    bool ponder_searching;
+
+    State() {
+        book_changed = false;
+        remaining_time_msec_black = 0;
+        remaining_time_msec_white = 0;
+        ponder_searching = false;
+    }
+};
+
+// ===== FILE: Egaroucid/src/console/util.hpp =====
+
+/*
+    Egaroucid Project
+
+    @file util.hpp
+        Utility
+    @date 2021-2025
+    @author Takuto Yamana
+    @license GPL-3.0-or-later
+*/
+#pragma once
+
+#include <iostream>
+#include <chrono>
+#include <iomanip>
+#include <sstream>
+#include <vector>
+#include "./../engine/common.hpp"
+
+std::string get_current_datetime() {
+    auto now = std::chrono::system_clock::now();
+    auto in_time_t = std::chrono::system_clock::to_time_t(now);
+    std::tm tm;
+    get_localtime(&tm, &in_time_t);
+    std::stringstream ss;
+    ss << std::put_time(&tm, "%Y-%m-%d %X");
+    return ss.str();
+}
+
+std::string get_current_datetime_for_file() {
+    auto now = std::chrono::system_clock::now();
+    auto in_time_t = std::chrono::system_clock::to_time_t(now);
+    std::tm tm;
+    get_localtime(&tm, &in_time_t);
+    std::stringstream ss;
+    ss << std::put_time(&tm, "%Y-%m-%d-%H=%M=%S");
+    return ss.str();
+}
+
+std::vector<std::string> split_by_space(const std::string &str) {
+    std::vector<std::string> tokens;
+    std::istringstream iss(str);
+    std::string token;
+    while (iss >> token) {
+        tokens.push_back(token);
+    }
+    return tokens;
+}
+
+std::vector<std::string> split_by_delimiter(const std::string &str, const std::string &delimiter) {
+    std::vector<std::string> tokens;
+    size_t start = 0;
+    size_t end = str.find(delimiter);
+    
+    while (end != std::string::npos) {
+        tokens.push_back(str.substr(start, end - start));
+        start = end + delimiter.length();
+        end = str.find(delimiter, start);
+    }
+    
+    tokens.push_back(str.substr(start));
+    return tokens;
+}
+
+std::string remove_spaces(const std::string &str) {
+    std::string result = str;
+    result.erase(std::remove(result.begin(), result.end(), ' '), result.end());
+    return result;
+}
+
+// ===== FILE: Egaroucid/src/console/option.hpp =====
+
+/*
+    Egaroucid Project
+
+    @file option.hpp
+        Options of Egaroucid
+    @date 2021-2025
+    @author Takuto Yamana
+    @license GPL-3.0-or-later
+*/
+
+#pragma once
+#include <iostream>
+#include "./../engine/engine_all.hpp"
+#include "commandline_option.hpp"
+#include "console_common.hpp"
+#include "util.hpp"
+
+#define TIME_NOT_ALLOCATED -1
+
+struct Options {
+    std::string binary_path;
+    int level;
+    int n_threads;
+    bool show_log;
+#if USE_CHANGEABLE_HASH_LEVEL
+    int hash_level;
+#endif
+    std::string book_file;
+    std::string eval_file;
+    bool nobook;
+    int mode;
+    bool gtp;
+    bool quiet;
+    int time_allocated_seconds; // -1 (TIME_NOT_ALLOCATED): not allocated
+    bool ponder;
+    bool noboard;
+    bool log_to_file;
+    std::string log_file;
+    bool noautopass;
+    bool show_value;
+    bool play_loss;
+    double play_loss_ratio;
+    int play_loss_max;
+#ifdef INCLUDE_GGS
+    bool ggs;
+    std::string ggs_username;
+    std::string ggs_password;
+    bool ggs_log_to_file;
+    std::string ggs_log_file;
+    bool ggs_game_log_to_file;
+    std::string ggs_game_log_dir;
+    bool ggs_accept_request;
+    bool ggs_route_join_tournament;
+    int board_type = 0;
+#endif
+};
+
+Options get_options(std::vector<Commandline_option> commandline_options, std::string binary_path) {
+    Options res;
+    std::string datetime = get_current_datetime_for_file();
+    res.binary_path = binary_path;
+    res.level = DEFAULT_LEVEL;
+    if (find_commandline_option(commandline_options, ID_LEVEL)) {
+        std::vector<std::string> arg = get_commandline_option_arg(commandline_options, ID_LEVEL);
+        try {
+            res.level = std::stoi(arg[0]);
+            if (res.level < 0 || N_LEVEL <= res.level) {
+                res.level = DEFAULT_LEVEL;
+                std::cerr << "[ERROR] level argument out of range" << std::endl;
+            }
+        } catch (const std::invalid_argument& e) {
+            std::cerr << "[ERROR] invalid level" << std::endl;
+        } catch (const std::out_of_range& e) {
+            std::cerr << "[ERROR] level argument out of range" << std::endl;
+        }
+    }
+    res.n_threads = std::min(48, (int)std::thread::hardware_concurrency());
+    if (find_commandline_option(commandline_options, ID_THREAD)) {
+        std::vector<std::string> arg = get_commandline_option_arg(commandline_options, ID_THREAD);
+        try {
+            res.n_threads = std::stoi(arg[0]);
+        } catch (const std::invalid_argument& e) {
+            std::cerr << "[ERROR] thread argument invalid" << std::endl;
+        } catch (const std::out_of_range& e) {
+            std::cerr << "[ERROR] thread argument out of range" << std::endl;
+        }
+    }
+    res.show_log = find_commandline_option(commandline_options, ID_LOG);
+    #if USE_CHANGEABLE_HASH_LEVEL
+        res.hash_level = DEFAULT_HASH_LEVEL;
+        if (find_commandline_option(commandline_options, ID_HASH)) {
+            std::vector<std::string> arg = get_commandline_option_arg(commandline_options, ID_HASH);
+            try {
+                res.hash_level = std::stoi(arg[0]);
+                if (res.hash_level < 0 || N_HASH_LEVEL <= res.hash_level) {
+                    res.hash_level = DEFAULT_HASH_LEVEL;
+                    std::cerr << "[ERROR] hash argument out of range" << std::endl;
+                }
+            } catch (const std::invalid_argument& e) {
+                std::cerr << "[ERROR] hash argument invalid" << std::endl;
+            } catch (const std::out_of_range& e) {
+                std::cerr << "[ERROR] hash argument out of range" << std::endl;
+            }
+        }
+    #endif
+    res.book_file = binary_path + "resources/book.egbk3";
+    if (find_commandline_option(commandline_options, ID_BOOK_FILE)) {
+        std::vector<std::string> arg = get_commandline_option_arg(commandline_options, ID_BOOK_FILE);
+        try {
+            res.book_file = arg[0];
+        } catch (const std::invalid_argument& e) {
+            std::cerr << "[ERROR] hash argument invalid" << std::endl;
+        } catch (const std::out_of_range& e) {
+            std::cerr << "[ERROR] hash argument out of range" << std::endl;
+        }
+    }
+    res.eval_file = binary_path + "resources/eval.egev2";
+    if (find_commandline_option(commandline_options, ID_EVAL_FILE)) {
+        std::vector<std::string> arg = get_commandline_option_arg(commandline_options, ID_EVAL_FILE);
+        try {
+            res.eval_file = arg[0];
+        } catch (const std::invalid_argument& e) {
+            std::cerr << "[ERROR] hash argument invalid" << std::endl;
+        } catch (const std::out_of_range& e) {
+            std::cerr << "[ERROR] hash argument out of range" << std::endl;
+        }
+    }
+    res.nobook = find_commandline_option(commandline_options, ID_NOBOOK);
+    res.mode = MODE_HUMAN_HUMAN;
+    if (find_commandline_option(commandline_options, ID_MODE)) {
+        std::vector<std::string> arg = get_commandline_option_arg(commandline_options, ID_MODE);
+        try {
+            res.mode = std::stoi(arg[0]);
+            if (res.mode < 0 || 4 <= res.mode) {
+                res.mode = 0;
+                std::cerr << "[ERROR] mode argument out of range" << std::endl;
+            }
+        } catch (const std::invalid_argument& e) {
+            std::cerr << "[ERROR] invalid mode" << std::endl;
+        } catch (const std::out_of_range& e) {
+            std::cerr << "[ERROR] mode argument out of range" << std::endl;
+        }
+    }
+    res.gtp = find_commandline_option(commandline_options, ID_GTP);
+    res.quiet = find_commandline_option(commandline_options, ID_QUIET);
+    res.time_allocated_seconds = TIME_NOT_ALLOCATED;
+    if (find_commandline_option(commandline_options, ID_TIME_ALLOCATE)) {
+        std::vector<std::string> arg = get_commandline_option_arg(commandline_options, ID_TIME_ALLOCATE);
+        try {
+            res.time_allocated_seconds = std::stoi(arg[0]);
+            if (res.time_allocated_seconds < 1) {
+                res.time_allocated_seconds = TIME_NOT_ALLOCATED;
+                std::cerr << "[ERROR] time allocation argument out of range" << std::endl;
+            }
+        } catch (const std::invalid_argument& e) {
+            std::cerr << "[ERROR] invalid time allocation" << std::endl;
+        } catch (const std::out_of_range& e) {
+            std::cerr << "[ERROR] time allocation argument out of range" << std::endl;
+        }
+    }
+    res.ponder = find_commandline_option(commandline_options, ID_PONDER);
+    if (find_commandline_option(commandline_options, ID_DISABLE_AUTO_CACHE_CLEAR)) {
+        transposition_table_auto_reset_importance = false;
+    }
+    res.noboard = find_commandline_option(commandline_options, ID_NOBOARD);
+    res.log_to_file = false;
+    if (find_commandline_option(commandline_options, ID_LOG_TO_FILE)) {
+        res.log_to_file = true;
+        std::vector<std::string> arg = get_commandline_option_arg(commandline_options, ID_LOG_TO_FILE);
+        try {
+            res.log_file = arg[0];
+        } catch (const std::invalid_argument& e) {
+            std::cerr << "[ERROR] invalid log file" << std::endl;
+        } catch (const std::out_of_range& e) {
+            std::cerr << "[ERROR] log file out of range" << std::endl;
+        }
+    }
+    res.noautopass = find_commandline_option(commandline_options, ID_NOAUTOPASS);
+    res.show_value = find_commandline_option(commandline_options, ID_SHOWVALUE);
+    res.play_loss = find_commandline_option(commandline_options, ID_PLAY_LOSS);
+    if (res.play_loss) {
+        std::vector<std::string> arg = get_commandline_option_arg(commandline_options, ID_PLAY_LOSS);
+        try {
+            res.play_loss_ratio = std::stod(arg[0]);
+            res.play_loss_max = std::stoi(arg[1]);
+        } catch (const std::invalid_argument& e) {
+            std::cerr << "[ERROR] invalid play loss argument" << std::endl;
+        } catch (const std::out_of_range& e) {
+            std::cerr << "[ERROR] play loss argument out of range" << std::endl;
+        }
+    }
+    if (!res.log_to_file) {
+        if (find_commandline_option(commandline_options, ID_LOGDIR)) {
+            res.log_to_file = true;
+            std::vector<std::string> arg = get_commandline_option_arg(commandline_options, ID_LOGDIR);
+            try {
+                res.log_file = arg[0] + "/" + datetime + "_search.log";
+            } catch (const std::invalid_argument& e) {
+                std::cerr << "[ERROR] invalid log dir" << std::endl;
+            } catch (const std::out_of_range& e) {
+                std::cerr << "[ERROR] log dir out of range" << std::endl;
+            }
+        }
+    }
+#ifdef INCLUDE_GGS
+    res.ggs = find_commandline_option(commandline_options, ID_GGS);
+    if (res.ggs) {
+        res.ggs_username = "";
+        res.ggs_password = "";
+        if (find_commandline_option(commandline_options, ID_GGS)) {
+            std::vector<std::string> arg = get_commandline_option_arg(commandline_options, ID_GGS);
+            try {
+                res.ggs_username = arg[0];
+                res.ggs_password = arg[1];
+            } catch (const std::invalid_argument& e) {
+                std::cerr << "[ERROR] invalid ggs argument" << std::endl;
+            } catch (const std::out_of_range& e) {
+                std::cerr << "[ERROR] ggs argument out of range" << std::endl;
+            }
+        }
+    }
+    res.ggs_log_to_file = find_commandline_option(commandline_options, ID_GGS_LOGFILE);
+    if (res.ggs_log_to_file) {
+        std::vector<std::string> arg = get_commandline_option_arg(commandline_options, ID_GGS_LOGFILE);
+        try {
+            res.ggs_log_file = arg[0];
+        } catch (const std::invalid_argument& e) {
+            std::cerr << "[ERROR] invalid ggs log file" << std::endl;
+        } catch (const std::out_of_range& e) {
+            std::cerr << "[ERROR] ggs log file out of range" << std::endl;
+        }
+    }
+    if (!res.ggs_log_to_file) {
+        if (find_commandline_option(commandline_options, ID_GGS_LOGDIR)) {
+            res.ggs_log_to_file = true;
+            std::vector<std::string> arg = get_commandline_option_arg(commandline_options, ID_GGS_LOGDIR);
+            try {
+                res.ggs_log_file = arg[0] + "/" + datetime + "_ggs.log";
+            } catch (const std::invalid_argument& e) {
+                std::cerr << "[ERROR] invalid ggs log dir" << std::endl;
+            } catch (const std::out_of_range& e) {
+                std::cerr << "[ERROR] ggs log dir out of range" << std::endl;
+            }
+        }
+    }
+    res.ggs_game_log_to_file = find_commandline_option(commandline_options, ID_GGS_GAMELOGDIR);
+    if (res.ggs_game_log_to_file) {
+        std::vector<std::string> arg = get_commandline_option_arg(commandline_options, ID_GGS_GAMELOGDIR);
+        try {
+            res.ggs_game_log_dir = arg[0];
+        } catch (const std::invalid_argument& e) {
+            std::cerr << "[ERROR] invalid ggs game log dir" << std::endl;
+        } catch (const std::out_of_range& e) {
+            std::cerr << "[ERROR] ggs game log dir out of range" << std::endl;
+        }
+    }
+    res.ggs_accept_request = find_commandline_option(commandline_options, ID_GGS_ACCEPT_REQUEST);
+    res.ggs_route_join_tournament = find_commandline_option(commandline_options, ID_GGS_ROUTE_JOIN_TOURNAMENT);
+#endif
+    return res;
+}
+
+// ===== FILE: Egaroucid/src/console/command_definition.hpp =====
+
+/*
+    Egaroucid Project
+
+    @file command_definition.hpp
+        Definition of commands
+    @date 2021-2025
+    @author Takuto Yamana
+    @license GPL-3.0-or-later
+*/
+
+#pragma once
+#include <string>
+#include <vector>
+#include "console_common.hpp"
+
+#define N_COMMANDS 24
+
+#define CMD_ID_NONE -1
+#define CMD_ID_HELP 0
+#define CMD_ID_EXIT 1
+#define CMD_ID_VERSION 2
+#define CMD_ID_INIT 3
+#define CMD_ID_NEW 4
+#define CMD_ID_PLAY 5
+#define CMD_ID_UNDO 6
+#define CMD_ID_REDO 7
+#define CMD_ID_GO 8
+#define CMD_ID_SETBOARD 9
+#define CMD_ID_LEVEL 10
+#define CMD_ID_LEVELINFO 11
+#define CMD_ID_MODE 12
+#define CMD_ID_HINT 13
+#define CMD_ID_ANALYZE 14
+#define CMD_ID_CLEARCACHE 15
+#define CMD_ID_GENPROBLEM 16
+#define CMD_ID_TRANSCRIPT 17
+#define CMD_ID_SETTIME 18
+#define CMD_ID_ADVISE 19
+#define CMD_ID_BOARD1  20
+#define CMD_ID_BOARD2  21
+#define CMD_ID_BOARD3  22
+#define CMD_ID_BOARD_DEFAULT 23
+
+#define COMMAND_NOT_FOUND -1
+
+struct Command_info{
+    int id;
+    std::vector<std::string> names;
+    std::string arg;
+    std::string description;
+};
+
+const Command_info command_data[N_COMMANDS] = {
+    {CMD_ID_HELP,       {"help", "?"},                                      "",                         "See command help"}, 
+    {CMD_ID_EXIT,       {"exit", "quit"},                                   "",                         "Exit"}, 
+    {CMD_ID_VERSION,    {"version", "ver"},                                 "",                         "See Egaroucid version"}, 
+    {CMD_ID_INIT,       {"init", "reset"},                                  "",                         "Initialize a game"}, 
+    {CMD_ID_NEW,        {"new"},                                            "",                         "Reset board to `setboard` position"},
+    {CMD_ID_PLAY,       {"play"},                                           "",                         "Play moves with f5D6... notation"},
+    {CMD_ID_UNDO,       {"undo"},                                           "<moves>",                  "Undo your last <moves> moves. if <moves> is empty, undo last 1 move."},
+    {CMD_ID_REDO,       {"redo"},                                           "<moves>",                  "Redo your last <moves> moves. if <moves> is empty, redo last 1 move."},
+    {CMD_ID_GO,         {"go"},                                             "",                         "Egaroucid puts a disc."},
+    {CMD_ID_SETBOARD,   {"setboard"},                                       "<board>",                  "Set position to <board>. `B`, `W`, `-` each represents black, white, empty."},
+    {CMD_ID_LEVEL,      {"level"},                                          "<level>",                  "Set level to <level>"},
+    {CMD_ID_LEVELINFO,  {"levelinfo", "linfo"},                             "",                         "See level definition"},
+    {CMD_ID_MODE,       {"mode"},                                           "<mode>",                   "Set mode to <mode> (0: You vs Egaroucid, 1: Egaroucid vs You, 2: Egaroucid vs Egaroucid, 3: You vs You)"},
+    {CMD_ID_HINT,       {"hint"},                                           "<moves>",                  "Print best <moves> moves. if <moves> is empty, print best move."},
+    {CMD_ID_ANALYZE,    {"analyze", "analyse"},                             "",                         "Analyze last game."},
+    {CMD_ID_CLEARCACHE, {"clearcache"},                                     "",                         "Clear cache."},
+    {CMD_ID_GENPROBLEM, {"genproblem"},                                     "<n_empties> <n_problems>", "Generate <n_problems> problems with <n_empties> empty squares and calculate the score and bestmove with specified level"},
+    {CMD_ID_TRANSCRIPT, {"transcript"},                                     "",                         "Show transcript of the game"},
+    {CMD_ID_SETTIME,    {"settime"},                                        "<color> <time>",           "Set <color> (X / B / O / W) player's remaining time to <time> (seconds)"},
+    {CMD_ID_ADVISE,     {"advise", "advice"},                               "",                         "Output information for advising"}, 
+    {CMD_ID_BOARD1, {"board1", "b1"}, "", "Switch to Board1 variant"},
+    {CMD_ID_BOARD2, {"board2", "b2"}, "", "Switch to Board2 variant"},
+    {CMD_ID_BOARD3, {"board3", "b3"}, "", "Switch to Board3 variant"},
+    {CMD_ID_BOARD_DEFAULT, {"board", "default", "bd"}, "", "Switch to default Board"},
+};
+
+// ===== FILE: Egaroucid/src/console/gtp_command.hpp =====
+
+/*
+    Egaroucid Project
+
+    @file gtp_command.hpp
+        Commands for GTP (Gp Text Protocol)
+    @date 2021-2025
+    @author Takuto Yamana
+    @license GPL-3.0-or-later
+*/
+
+#pragma once
+#include <iostream>
+#include <string>
+#include <sstream>
+#include <cctype>
+#include <algorithm>
+#include "./../engine/engine_all.hpp"
+#include "board_info.hpp"
+#include "option.hpp"
+#include "state.hpp"
+#include "close.hpp"
+#include "print.hpp"
+#include "gtp_command_definition.hpp"
+#include "command.hpp"
+
+#define GTP_VERSION "2.0"
+#define GTP_ENDL "\n\n"
+#define GTP_RULE_ID "Othello"
+#define GTP_ID_NOT_FOUND -1000000000
+#define GTP_POLICY_UNDEFINED 127
+#define GTP_POLICY_PASS 100
+#define GTP_PLAYER_UNDEFINED 127
+
+std::string gtp_get_command_line() {
+    std::string cmd_line;
+    std::getline(std::cin, cmd_line);
+    return cmd_line;
+}
+
+void gtp_split_cmd_arg(std::string cmd_line, int *id, std::string *cmd, std::string *arg) {
+    std::istringstream iss(cmd_line);
+    std::string first_elem;
+    iss >> first_elem;
+    try{
+        *id = std::stoi(first_elem);
+        iss >> *cmd;
+    } catch (const std::invalid_argument& e) {
+        *id = GTP_ID_NOT_FOUND;
+        *cmd = first_elem;
+    } catch (const std::out_of_range& e) {
+        *id = GTP_ID_NOT_FOUND;
+        *cmd = first_elem;
+    }
+    iss.get();
+    std::getline(iss, *arg);
+}
+
+int gtp_get_command_id(std::string cmd) {
+    for (int i = 0; i < N_GTP_COMMANDS; ++i) {
+        if (std::find(gtp_command_data[i].names.begin(), gtp_command_data[i].names.end(), cmd) != gtp_command_data[i].names.end())
+            return gtp_command_data[i].id;
+    }
+    return COMMAND_NOT_FOUND;
+}
+
+std::string gtp_head(int id) {
+    if (id == GTP_ID_NOT_FOUND)
+        return "=";
+    return "=" + std::to_string(id);
+}
+
+std::string gtp_error_head(int id) {
+    if (id == GTP_ID_NOT_FOUND)
+        return "?";
+    return "?" + std::to_string(id);
+}
+
+std::string gtp_idx_to_coord(int idx) {
+    int y = HW_M1 - idx / HW;
+    int x = HW_M1 - idx % HW;
+    const std::string x_coord = "ABCDEFGH";
+    return std::string(1, x_coord[x]) + std::to_string(y + 1);
+}
+
+int check_color(std::string color) {
+    int player = GTP_PLAYER_UNDEFINED;
+    if (color == "black" || color == "b" || color == "B")
+        player = BLACK;
+    if (color == "white" || color == "w" || color == "W")
+        player = WHITE;
+    return player;
+}
+
+void gtp_quit(int id, State *state, Options *options) {
+    std::cout << gtp_head(id) << GTP_ENDL;
+    close(state, options);
+}
+
+void gtp_print_gtp_version(int id) {
+    std::cout << gtp_head(id) << " " << GTP_VERSION << GTP_ENDL;
+}
+
+void gtp_print_name(int id) {
+    std::cout << gtp_head(id) << " " << EGAROUCID_NAME << GTP_ENDL;
+}
+
+void gtp_print_version(int id) {
+    std::cout << gtp_head(id) << " " << EGAROUCID_VERSION << GTP_ENDL;
+}
+
+void gtp_known_command(int id, std::string arg) {
+    std::string res = "false";
+    for (const Command_info &cmd: gtp_command_data) {
+        if (cmd.names[0] == arg)
+            res = "true";
+    }
+    std::cout << gtp_head(id) << " " << res << GTP_ENDL;
+}
+
+void gtp_print_list_commands(int id) {
+    std::cout << gtp_head(id) << " ";
+    for (const Command_info &cmd: gtp_command_data) {
+        std::cout << cmd.names[0] << "\n";
+    }
+    std::cout << "\n";
+}
+
+void gtp_boardsize(int id) {
+    std::cout << gtp_head(id) << GTP_ENDL;
+}
+
+void gtp_clear_board(int id, Board_info *board) {
+    board->player = BLACK;
+    board->board.reset();
+    std::cout << gtp_head(id) << GTP_ENDL;
+}
+
+void gtp_komi(int id) {
+    std::cout << gtp_head(id) << GTP_ENDL;
+}
+
+void gtp_play(int id, std::string arg, Board_info *board) {
+    std::string color, coord;
+    uint_fast8_t policy = GTP_POLICY_UNDEFINED;
+    uint_fast8_t player = GTP_PLAYER_UNDEFINED;
+    try{
+        std::istringstream iss(arg);
+        iss >> color >> coord;
+        player = check_color(color);
+        policy = GTP_POLICY_UNDEFINED;
+        if (coord == "PASS" || coord == "pass") {
+            policy = GTP_POLICY_PASS;
+        }
+        else if (coord.size() == 2) {
+            int x = coord[0] - 'A';
+            if (x < 0 || HW <= x)
+                x = coord[0] - 'a';
+            int y = coord[1] - '1';
+            if (0 <= x && x < HW && 0 <= y && y < HW)
+                policy = HW2_M1 - (y * HW + x);
+        }
+    } catch (...) {
+        policy = GTP_POLICY_UNDEFINED;
+    }
+    if (player == GTP_PLAYER_UNDEFINED || policy == GTP_POLICY_UNDEFINED) {
+        std::cout << gtp_error_head(id) << " " << "illegal move " << color << " " << coord << " " << (int)player << " " << (int)policy << GTP_ENDL;
+        return;
+    }
+    if (player != board->player) {
+        board->board.pass();
+        board->player ^= 1;
+    }
+    if (policy == GTP_POLICY_PASS) {
+        board->board.pass();
+        board->player ^= 1;
+    } else{
+        Flip flip;
+        calc_flip(&flip, &board->board, policy);
+        if (flip.flip == 0ULL) {
+            std::cout << gtp_error_head(id) << " " << "illegal move" << GTP_ENDL;
+            return;
+        }
+        board->board.move_board(&flip);
+        board->player ^= 1;
+        board->boards.emplace_back(board->board);
+        board->players.emplace_back(board->player);
+    }
+    std::cout << gtp_head(id) << GTP_ENDL;
+}
+
+void gtp_genmove(int id, std::string arg, Board_info *board, State *state, Options *options) {
+    uint_fast8_t player = GTP_PLAYER_UNDEFINED;
+    try{
+        player = check_color(arg);
+    } catch (...) {
+        player = GTP_PLAYER_UNDEFINED;
+    }
+    if (player != BLACK && player != WHITE) {
+        std::cout << gtp_error_head(id) << " " << "illegal color" << GTP_ENDL;
+        return;
+    }
+    if (player != board->player) {
+        board->board.pass();
+        board->player ^= 1;
+    }
+    if (board->board.get_legal() == 0ULL) {
+        std::cout << gtp_head(id) << " PASS" << GTP_ENDL;
+        return;
+    }
+    int policy = ai(board->board, options->level, true, 0, true, options->show_log).policy;
+    Flip flip;
+    calc_flip(&flip, &board->board, policy);
+    board->board.move_board(&flip);
+    board->player ^= 1;
+    board->boards.emplace_back(board->board);
+    board->players.emplace_back(board->player);
+    std::cout << gtp_head(id) << " " << gtp_idx_to_coord(policy) << GTP_ENDL;
+}
+
+void gtp_rules_game_id(int id) {
+    std::cout << gtp_head(id) << " " << GTP_RULE_ID << GTP_ENDL;
+}
+
+void gtp_print_board_reversed(Board_info *board) {
+    std::cout << " ";
+    for (int i = 0; i < HW; ++i)
+        std::cerr << " " << (char)('A' + i);
+    std::cerr << '\n';
+    for (int i = 0; i < HW; ++i) {
+        std::cerr << (char)('8' - i) << " ";
+        for (int j = 0; j < HW; ++j) {
+            int coord = i * HW + (HW_M1 - j);
+            char disc = '.';
+            if (board->player == BLACK) {
+                if (1 & (board->board.player >> coord))
+                    disc = 'X';
+                else if (1 & (board->board.opponent >> coord))
+                    disc = 'O';
+            } else{
+                if (1 & (board->board.player >> coord))
+                    disc = 'O';
+                else if (1 & (board->board.opponent >> coord))
+                    disc = 'X';
+            }
+            std::cout << ' ' << disc;
+        }
+        std::cout << '\n';
+    }
+    std::cout << '\n';
+}
+
+void gtp_print_board(Board_info *board) {
+    std::cout << " ";
+    for (int i = 0; i < HW; ++i)
+        std::cout << " " << (char)('a' + i);
+    std::cout << '\n';
+    for (int i = 0; i < HW; ++i) {
+        std::cout << "  " << (char)('1' + i);
+        for (int j = 0; j < HW; ++j) {
+            int coord = HW2_M1 - (i * HW + j);
+            char disc = '.';
+            if (board->player == BLACK) {
+                if (1 & (board->board.player >> coord))
+                    disc = 'X';
+                else if (1 & (board->board.opponent >> coord))
+                    disc = 'O';
+            } else{
+                if (1 & (board->board.player >> coord))
+                    disc = 'O';
+                else if (1 & (board->board.opponent >> coord))
+                    disc = 'X';
+            }
+            std::cout << ' ' << disc;
+        }
+        std::cout << '\n';
+    }
+    std::cout << '\n';
+}
+
+void gtp_rules_board(int id, Board_info *board) {
+    std::cout << gtp_head(id);
+    gtp_print_board_reversed(board);
+}
+
+void gtp_rules_board_size(int id) {
+    std::cout << gtp_head(id) << " " << HW << GTP_ENDL;
+}
+
+void gtp_rules_legal_moves(int id, Board_info *board) {
+    std::cout << gtp_head(id);
+    uint64_t legal = board->board.get_legal();
+    if (legal) {
+        for (int i = 0; i < HW2; ++i) {
+            if (1 & (legal >> i)) {
+                std::cout << " " << gtp_idx_to_coord(i);
+            }
+        }
+    } else
+        std::cout << " pass";
+    std::cout << GTP_ENDL;
+}
+
+void gtp_rules_side_move(int id, Board_info *board) {
+    std::string player = "black";
+    if (board->player == WHITE)
+        player = "white";
+    std::cout << gtp_head(id) << " " << player << GTP_ENDL;
+}
+
+void gtp_rules_final_result(int id, Board_info *board) {
+    std::string result = "Game is not over yet.";
+    if (board->board.is_end()) {
+        int black_score = board->board.count_player();
+        int white_score = board->board.count_opponent();
+        if (board->player == WHITE)
+            std::swap(black_score, white_score);
+        if (black_score > white_score)
+            result = "Black wins by " + std::to_string(std::abs(board->board.score_player())) + " points.";
+        else if (black_score < white_score)
+            result = "White wins by " + std::to_string(std::abs(board->board.score_player())) + " points.";
+        else
+            result = "Draw.";
+        result += " Final score is B " + std::to_string(black_score) + " and W " + std::to_string(white_score);
+    }
+    std::cout << gtp_head(id) << " " << result << GTP_ENDL;
+}
+
+void gtp_showboard(int id, Board_info *board) {
+    std::cout << gtp_head(id);
+    gtp_print_board(board);
+}
+
+void gtp_undo(int id, Board_info *board) {
+    if (!board->boards.empty()) {
+        board->boards.pop_back();
+        board->players.pop_back();
+    }
+    if (!board->boards.empty()) {
+        board->board = board->boards.back();
+        board->player = board->players.back();
+    }
+    std::cout << gtp_head(id) << GTP_ENDL;
+}
+
+void gtp_reg_genmove(int id, std::string arg, Board_info *board, State *state, Options *options) {
+    uint_fast8_t player = GTP_PLAYER_UNDEFINED;
+    try{
+        player = check_color(arg);
+    } catch (...) {
+        player = GTP_PLAYER_UNDEFINED;
+    }
+    if (player != BLACK && player != WHITE) {
+        std::cout << gtp_error_head(id) << " " << "illegal color" << GTP_ENDL;
+        return;
+    }
+    if (player != board->player) {
+        board->board.pass();
+        board->player ^= 1;
+    }
+    if (board->board.get_legal() == 0ULL) {
+        std::cout << gtp_head(id) << " PASS" << GTP_ENDL;
+        return;
+    }
+    int policy = ai(board->board, options->level, true, 0, true, options->show_log).policy;
+    std::cout << gtp_head(id) << " " << gtp_idx_to_coord(policy) << GTP_ENDL;
+}
+
+void gtp_list_games(int id) {
+    std::cout << gtp_head(id) << " " << GTP_RULE_ID << GTP_ENDL;
+}
+
+void gtp_check_command(Board_info *board, State *state, Options *options) {
+    std::string cmd_line = gtp_get_command_line();
+    if (options->ponder) {
+        state->ponder_searching = false;
+        state->ponder_future.get();
+    }
+    std::string cmd, arg;
+    int id;
+    gtp_split_cmd_arg(cmd_line, &id, &cmd, &arg);
+    int cmd_id = gtp_get_command_id(cmd);
+    switch (cmd_id) {
+        case COMMAND_NOT_FOUND:
+            std::cout << gtp_error_head(id) << " " << "[ERROR] command not found" << GTP_ENDL;
+            break;
+        case GTP_CMD_ID_QUIT:
+            gtp_quit(id, state, options);
+            break;
+        case GTP_CMD_ID_GTP_VERSION:
+            gtp_print_gtp_version(id);
+            break;
+        case GTP_CMD_ID_NAME:
+            gtp_print_name(id);
+            break;
+        case GTP_CMD_ID_VERSION:
+            gtp_print_version(id);
+            break;
+        case GTP_CMD_ID_KNOWN_CMD:
+            gtp_known_command(id, arg);
+            break;
+        case GTP_CMD_ID_LIST_CMD:
+            gtp_print_list_commands(id);
+            break;
+        case GTP_CMD_ID_BOARDSIZE:
+            gtp_boardsize(id);
+            break;
+        case GTP_CMD_ID_CLEAR_BOARD:
+            gtp_clear_board(id, board);
+            break;
+        case GTP_CMD_ID_KOMI:
+            gtp_komi(id);
+            break;
+        case GTP_CMD_ID_PLAY:
+            gtp_play(id, arg, board);
+            break;
+        case GTP_CMD_ID_GENMOVE:
+            gtp_genmove(id, arg, board, state, options);
+            break;
+        case GTP_CMD_ID_RULES_GAME_ID:
+            gtp_rules_game_id(id);
+            break;
+        case GTP_CMD_ID_RULES_BOARD:
+            gtp_rules_board(id, board);
+            break;
+        case GTP_CMD_ID_RULES_BOARD_SIZE:
+            gtp_rules_board_size(id);
+            break;
+        case GTP_CMD_ID_RULES_LEGAL_MOVES:
+            gtp_rules_legal_moves(id, board);
+            break;
+        case GTP_CMD_ID_RULES_SIDE_MOVE:
+            gtp_rules_side_move(id, board);
+            break;
+        case GTP_CMD_ID_RULES_FINAL_RESULT:
+            gtp_rules_final_result(id, board);
+            break;
+        case GTP_CMD_ID_SHOWBOARD:
+            gtp_showboard(id, board);
+            break;
+        case GTP_CMD_ID_UNDO:
+            gtp_undo(id, board);
+            break;
+        case GTP_CMD_ID_REG_GENMOVE:
+            gtp_reg_genmove(id, arg, board, state, options);
+            break;
+        case GTP_CMD_ID_LIST_GAMES:
+            gtp_list_games(id);
+            break;
+        default:
+            break;
+    }
+}
+
+// ===== FILE: Egaroucid/src/console/function.hpp =====
+
+/*
+    Egaroucid Project
+
+    @file function.hpp
+        Functions about engine
+    @date 2021-2025
+    @author Takuto Yamana
+    @license GPL-3.0-or-later
+*/
+
+#pragma once
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <string>
+#include "./../engine/engine_all.hpp"
+#include "command.hpp"
+
+#if USE_THREAD_MONITOR
+    #include "./../engine/thread_monitor.hpp"
+#endif
+
+#define SELF_PLAY_N_TRY 1
+
+void setboard(Board_info *board, Options *options, State *state, std::string board_str);
+Search_result go_noprint(Board_info *board, Options *options, State *state);
+void print_search_result_head();
+void print_search_result_body(Search_result result, const Options *options, const State *state);
+void go(Board_info *board, Options *options, State *state, uint64_t start_time);
+
+void solve_problems(std::vector<std::string> arg, Options *options, State *state) {
+    if (arg.size() < 1) {
+        std::cerr << "[ERROR] [FATAL] please input problem file" << std::endl;
+        return;
+    }
+    std::string file = arg[0];
+    std::ifstream ifs(file);
+    if (ifs.fail()) {
+        std::cerr << "[ERROR] [FATAL] no problem file found" << std::endl;
+        return;
+    }
+    std::string line;
+    Board_info board;
+    board.reset();
+    print_search_result_head();
+    Search_result total;
+    total.nodes = 0;
+    total.time = 0;
+    while (std::getline(ifs, line)) {
+        transposition_table.init();
+        setboard(&board, options, state, line);
+        #if USE_THREAD_MONITOR
+            start_thread_monitor();
+        #endif
+        Search_result res = go_noprint(&board, options, state);
+        print_search_result_body(res, options, state);
+        total.nodes += res.nodes;
+        total.time += res.time;
+    }
+    std::cout << "total " << total.nodes << " nodes in " << ((double)total.time / 1000) << "s NPS " << calc_nps(total.nodes, total.time) << std::endl;
+}
+
+void solve_problems_transcript_parallel(std::vector<std::string> arg, Options *options, State *state) {
+    if (arg.size() < 1) {
+        std::cerr << "[ERROR] [FATAL] please input problem file" << std::endl;
+        return;
+    }
+    std::string file = arg[0];
+    std::ifstream ifs(file);
+    if (ifs.fail()) {
+        std::cerr << "[ERROR] [FATAL] no problem file found" << std::endl;
+        return;
+    }
+    uint64_t strt = tim();
+    std::string line;
+    std::vector<Board> board_list;
+    Flip flip;
+    Board board_start;
+    while (std::getline(ifs, line)) {
+        /*
+        std::pair<Board, int> board_player = convert_board_from_str(line);
+        if (board_player.second != BLACK && board_player.second != WHITE) {
+            std::cerr << "[ERROR] can't convert board " << line << std::endl;
+            std::exit(1);
+        }
+        board_list.emplace_back(board_player.first);
+        */
+        board_start.reset();
+        for (int i = 0; i < (int)line.size() - 1; i += 2) {
+            int x = line[i] - 'a';
+            int y = line[i + 1] - '1';
+            int coord = HW2_M1 - (y * HW + x);
+            calc_flip(&flip, &board_start, coord);
+            board_start.move_board(&flip);
+            if (board_start.get_legal() == 0) {
+                board_start.pass();
+            }
+        }
+        board_list.emplace_back(board_start);
+    }
+    Search_result result;
+    if (thread_pool.size() == 0) {
+        for (int i = 0; i < (int)board_list.size(); ++i) {
+            result = ai(board_list[i], options->level, true, 0, false, options->show_log);
+            std::cout << board_list[i].to_str() << " " << result.value << std::endl;
+        }
+    } else {
+        int print_task_idx = 0;
+        std::vector<std::future<Search_result>> tasks;
+        for (Board &board: board_list) {
+            bool go_to_next_task = false;
+            while (!go_to_next_task) {
+                if (thread_pool.get_n_idle() && tasks.size() < board_list.size()) {
+                    bool pushed = false;
+                    tasks.emplace_back(thread_pool.push(&pushed, std::bind(&ai, board, options->level, true, 0, false, options->show_log)));
+                    if (pushed) {
+                        go_to_next_task = true;
+                    } else {
+                        tasks.pop_back();
+                    }
+                }
+                if (tasks.size() > print_task_idx) {
+                    if (tasks[print_task_idx].valid()) {
+                        if (tasks[print_task_idx].wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+                            result = tasks[print_task_idx].get();
+                            std::cout << board_list[print_task_idx].to_str() << " " << result.value << std::endl;
+                            ++print_task_idx;
+                        }
+                    } else {
+                        std::cerr << "[ERROR] task not valid" << std::endl;
+                        std::exit(1);
+                    }
+                }
+            }
+        }
+        while (print_task_idx < tasks.size()) {
+            if (tasks[print_task_idx].valid()) {
+                result = tasks[print_task_idx].get();
+                std::cout << board_list[print_task_idx].to_str() << " " << result.value << std::endl;
+                ++print_task_idx;
+            } else {
+                std::cerr << "[ERROR] task not valid" << std::endl;
+                std::exit(1);
+            }
+        }
+    }
+    std::cerr << "done in " << tim() - strt << " ms" << std::endl;
+}
+
+void execute_special_tasks(Options options) {
+    #if TUNE_MOVE_ORDERING
+        std::cout << "tune move ordering ";
+        tune_move_ordering(options.level);
+        std::exit(0);
+    #endif
+
+    #if TUNE_PROBCUT_MID
+        std::cout << "tune probcut (midsearch)" << std::endl;
+        get_data_probcut_mid();
+        std::exit(0);
+    #endif
+
+    #if TUNE_PROBCUT_END
+        std::cout << "tune probcut (endsearch)" << std::endl;
+        get_data_probcut_end();
+        std::exit(0);
+    #endif
+
+    #if TUNE_LOCAL_STRATEGY
+        std::cout << "tune local strategy" << std::endl;
+        tune_local_strategy();
+        std::exit(0);
+    #endif
+
+    #if TEST_ENDGAME_ACCURACY
+        endgame_accuracy_test();
+        std::exit(0);
+    #endif
+}
+
+bool execute_special_tasks_loop(Board_info *board, State *state, Options *options) {
+    uint64_t start_time = tim();
+    int player_before = board->player;
+    if (options->mode == MODE_HUMAN_AI && board->player == WHITE && !board->board.is_end()) {
+        go(board, options, state, start_time);
+        return true;
+    } else if (options->mode == MODE_AI_HUMAN && board->player == BLACK && !board->board.is_end()) {
+        go(board, options, state, start_time);
+        return true;
+    } else if (options->mode == MODE_AI_AI && !board->board.is_end()) {
+        go(board, options, state, start_time);
+        return true;
+    }
+    return false;
+}
+
+
+std::string self_play_task(Board board_start, std::string pre_moves_transcript, Options *options, bool use_multi_thread, int n_random_moves_additional, int n_try) {
+    Flip flip;
+    Search_result result;
+    std::string res = pre_moves_transcript;
+    for (int j = 0; j < n_random_moves_additional && board_start.check_pass(); ++j) {
+        uint64_t legal = board_start.get_legal();
+        int random_idx = myrandrange(0, pop_count_ull(legal));
+        int t = 0;
+        for (uint_fast8_t cell = first_bit(&legal); legal; cell = next_bit(&legal)) {
+            if (t == random_idx) {
+                calc_flip(&flip, &board_start, cell);
+                break;
+            }
+            ++t;
+        }
+        res += idx_to_coord(flip.pos);
+        board_start.move_board(&flip);
+    }
+    std::vector<int> prev_transcript;
+    for (int i = 0; i < n_try; ++i) {
+        Board board = board_start.copy();
+        std::vector<int> transcript;
+        while (board.check_pass()) {
+            result = ai(board, options->level, true, 0, use_multi_thread, options->show_log);
+            if (global_searching && is_valid_policy(result.policy)) {
+                transcript.emplace_back(result.policy);
+                calc_flip(&flip, &board, result.policy);
+                board.move_board(&flip);
+            } else {
+                break;
+            }
+        }
+        if (!global_searching) {
+            if (n_try == 1 || i == n_try - 1) {
+                prev_transcript.clear();
+                for (int &elem: transcript) {
+                    prev_transcript.emplace_back(elem);
+                }
+            }
+            break;
+        }
+        bool break_flag = true;
+        if (i < n_try - 1) {
+            if (prev_transcript.size() != transcript.size()) {
+                break_flag = false;
+            } else {
+                for (int i = 0; i < transcript.size(); ++i) {
+                    if (transcript[i] != prev_transcript[i]) {
+                        break_flag = false;
+                        break;
+                    }
+                }
+            }
+        }
+        prev_transcript.clear();
+        for (int &elem: transcript) {
+            prev_transcript.emplace_back(elem);
+        }
+        if (break_flag) {
+            break;
+        }
+    }
+    for (int &elem: prev_transcript) {
+        res += idx_to_coord(elem);
+    }
+    return res;
+}
+
+void self_play(std::vector<std::string> arg, Options *options, State *state) {
+    int n_games, n_random_moves;
+    if (arg.size() < 2) {
+        std::cerr << "[ERROR] [FATAL] please input arguments" << std::endl;
+        std::exit(1);
+    }
+    std::string str_n_games = arg[0];
+    std::string str_n_random_moves = arg[1];
+    try{
+        n_games = std::stoi(str_n_games);
+        n_random_moves = std::stoi(str_n_random_moves);
+    } catch (const std::invalid_argument& e) {
+        std::cout << str_n_games << " " << str_n_random_moves << " invalid argument" << std::endl;
+        std::exit(1);
+    } catch (const std::out_of_range& e) {
+        std::cout << str_n_games << " " << str_n_random_moves << " out of range" << std::endl;
+        std::exit(1);
+    }
+    std::cerr << n_games << " games with " << n_random_moves << " random moves" << std::endl;
+    uint64_t strt = tim();
+    Board board_start;
+    board_start.reset();
+    if (thread_pool.size() == 0) {
+        for (int i = 0; i < n_games; ++i) {
+            std::string transcript = self_play_task(board_start, "", options, false, n_random_moves, SELF_PLAY_N_TRY);
+            std::cout << transcript << std::endl;
+        }
+    } else {
+        int n_games_done = 0;
+        std::vector<std::future<std::string>> tasks;
+        while (n_games_done < n_games) {
+            if (thread_pool.get_n_idle() && (int)tasks.size() < n_games) {
+                bool pushed = false;
+                tasks.emplace_back(thread_pool.push(&pushed, std::bind(&self_play_task, board_start, "", options, false, n_random_moves, SELF_PLAY_N_TRY)));
+                if (!pushed) {
+                    tasks.pop_back();
+                }
+            }
+            for (std::future<std::string> &task: tasks) {
+                if (task.valid()) {
+                    if (task.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+                        std::string transcript = task.get();
+                        std::cout << transcript << std::endl;
+                        ++n_games_done;
+                    }
+                }
+            }
+            if (0 < n_games - n_games_done && n_games - n_games_done < thread_pool.size()) {
+                std::vector<std::string> transcripts_mid;
+                global_searching = false;
+                    for (std::future<std::string> &task: tasks) {
+                        if (task.valid()) {
+                            std::string transcript_mid = task.get();
+                            transcripts_mid.emplace_back(transcript_mid);
+                        }
+                    }
+                global_searching = true;
+                for (std::string &transcript_mid: transcripts_mid) {
+                    Board board_start_mid = board_start.copy();
+                    Flip flip;
+                    for (int i = 0; i < transcript_mid.size(); i += 2) {
+                        int x = transcript_mid[i] - 'a';
+                        int y = transcript_mid[i + 1] - '1';
+                        int coord = HW2_M1 - (y * HW + x);
+                        calc_flip(&flip, &board_start_mid, coord);
+                        board_start_mid.move_board(&flip);
+                        if (board_start_mid.get_legal() == 0) {
+                            board_start_mid.pass();
+                        }
+                    }
+                    int n_random_moves_additional = std::max(0, n_random_moves - (int)transcript_mid.size() / 2);
+                    std::string transcript = self_play_task(board_start_mid, transcript_mid, options, true, n_random_moves_additional, SELF_PLAY_N_TRY);
+                    std::cout << transcript << std::endl;
+                    ++n_games_done;
+                }
+            }
+        }
+    }
+    global_searching = false;
+    std::cerr << "done in " << tim() - strt << " ms" << std::endl;
+}
+
+void self_play_line(std::vector<std::string> arg, Options *options, State *state) {
+    if (arg.size() < 1) {
+        std::cerr << "please input opening file" << std::endl;
+        std::exit(1);
+    }
+    std::string opening_file = arg[0];
+    std::cerr << "selfplay with opening file " << opening_file << std::endl;
+    std::ifstream ifs(opening_file);
+    if (!ifs) {
+        std::cerr << "[ERROR] can't open file " << opening_file << std::endl;
+        std::exit(1);
+    }
+    uint64_t strt = tim();
+    std::string line;
+    Board board_start;
+    Flip flip;
+    Search_result result;
+    std::vector<std::pair<std::string, Board>> board_list;
+    while (std::getline(ifs, line)) {
+        board_start.reset();
+        for (int i = 0; i < (int)line.size() - 1; i += 2) {
+            int x = line[i] - 'a';
+            int y = line[i + 1] - '1';
+            int coord = HW2_M1 - (y * HW + x);
+            calc_flip(&flip, &board_start, coord);
+            board_start.move_board(&flip);
+            if (board_start.get_legal() == 0) {
+                board_start.pass();
+            }
+        }
+        board_list.emplace_back(std::make_pair(line, board_start));
+    }
+    if (thread_pool.size() == 0) {
+        for (std::pair<std::string, Board> start_position: board_list) {
+            std::string transcript = self_play_task(start_position.second, start_position.first, options, false, 0, SELF_PLAY_N_TRY);
+            std::cout << transcript << std::endl;
+        }
+    } else {
+        int task_idx = 0;
+        int print_idx = 0;
+        int n_running_task = 0;
+        std::vector<std::future<std::string>> tasks;
+        std::vector<std::string> results;
+        int n_games = board_list.size();
+        while (print_idx < n_games) {
+            if (thread_pool.get_n_idle() && tasks.size() < n_games) {
+                bool pushed = false;
+                tasks.emplace_back(thread_pool.push(&pushed, std::bind(&self_play_task, board_list[task_idx].second, board_list[task_idx].first, options, false, 0, SELF_PLAY_N_TRY)));
+                if (pushed) {
+                    ++task_idx;
+                    ++n_running_task;
+                    results.emplace_back("");
+                } else {
+                    tasks.pop_back();
+                }
+            }
+            for (int i = 0; i < tasks.size(); ++i) {
+                if (tasks[i].valid()) {
+                    if (tasks[i].wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+                        --n_running_task;
+                        results[i] = tasks[i].get();
+                    }
+                }
+            }
+            if (tasks.size() > print_idx) {
+                for (int i = print_idx; i < results.size(); ++i) {
+                    if (results[i] != "") {
+                        std::cout << results[i] << std::endl;
+                        ++print_idx;
+                    } else {
+                        break;
+                    }
+                }
+            }
+            if (task_idx == n_games && 0 < n_running_task && n_running_task < thread_pool.size()) {
+                std::vector<std::pair<int, std::string>> mid_tasks;
+                global_searching = false;
+                    for (int i = 0; i < tasks.size(); ++i) {
+                        if (tasks[i].valid()) {
+                            std::string transcript_mid = tasks[i].get();
+                            mid_tasks.emplace_back(std::make_pair(i, transcript_mid));
+                        }
+                    }
+                global_searching = true;
+                for (std::pair<int, std::string> &mid_task: mid_tasks) {
+                    Board board_start_mid;
+                    board_start_mid.reset();
+                    Flip flip;
+                    for (int i = 0; i < mid_task.second.size(); i += 2) {
+                        int x = mid_task.second[i] - 'a';
+                        int y = mid_task.second[i + 1] - '1';
+                        int coord = HW2_M1 - (y * HW + x);
+                        calc_flip(&flip, &board_start_mid, coord);
+                        board_start_mid.move_board(&flip);
+                        if (board_start_mid.get_legal() == 0) {
+                            board_start_mid.pass();
+                        }
+                    }
+                    std::string transcript = self_play_task(board_start_mid, mid_task.second, options, true, 0, SELF_PLAY_N_TRY);
+                    results[mid_task.first] = transcript;
+                    --n_running_task;
+                    for (int i = print_idx; i < results.size(); ++i) {
+                        if (results[i] != "") {
+                            std::cout << results[i] << std::endl;
+                            ++print_idx;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    std::cerr << "done in " << tim() - strt << " ms" << std::endl;
+}
+
+
+void self_play_board(std::vector<std::string> arg, Options *options, State *state) {
+    if (arg.size() < 1) {
+        std::cerr << "please input opening board file" << std::endl;
+        std::exit(1);
+    }
+    std::string opening_board_file = arg[0];
+    std::cerr << "selfplay with opening board file " << opening_board_file << std::endl;
+    std::ifstream ifs(opening_board_file);
+    if (!ifs) {
+        std::cerr << "[ERROR] can't open file " << opening_board_file << std::endl;
+        std::exit(1);
+    }
+    uint64_t strt = tim();
+    std::string line;
+    Flip flip;
+    Search_result result;
+    std::vector<std::pair<std::string, Board>> board_list;
+    while (std::getline(ifs, line)) {
+        std::pair<Board, int> board_player = convert_board_from_str(line);
+        if (board_player.second != BLACK && board_player.second != WHITE) {
+            std::cerr << "[ERROR] can't convert board " << line << std::endl;
+            std::exit(1);
+        }
+        board_list.emplace_back(std::make_pair(line, board_player.first));
+    }
+    if (thread_pool.size() == 0) {
+        for (std::pair<std::string, Board> start_position: board_list) {
+            std::string transcript = self_play_task(start_position.second, "", options, false, 0, SELF_PLAY_N_TRY);
+            std::cout << start_position.first << " " << transcript << std::endl;
+        }
+    } else {
+        int print_task_idx = 0;
+        std::vector<std::future<std::string>> tasks;
+        for (std::pair<std::string, Board> start_position: board_list) {
+            bool go_to_next_task = false;
+            while (!go_to_next_task) {
+                if (thread_pool.get_n_idle() && tasks.size() < board_list.size()) {
+                    bool pushed = false;
+                    tasks.emplace_back(thread_pool.push(&pushed, std::bind(&self_play_task, start_position.second, "", options, false, 0, SELF_PLAY_N_TRY)));
+                    if (pushed) {
+                        go_to_next_task = true;
+                    } else {
+                        tasks.pop_back();
+                    }
+                }
+                if (tasks.size() > print_task_idx) {
+                    if (tasks[print_task_idx].valid()) {
+                        if (tasks[print_task_idx].wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+                            std::string transcript = tasks[print_task_idx].get();
+                            std::cout << board_list[print_task_idx].first << " " << transcript << std::endl;
+                            ++print_task_idx;
+                        }
+                    } else {
+                        std::cerr << "[ERROR] task not valid" << std::endl;
+                        std::exit(1);
+                    }
+                }
+            }
+        }
+        while (print_task_idx < tasks.size()) {
+            if (tasks[print_task_idx].valid()) {
+                std::string transcript = tasks[print_task_idx].get();
+                std::cout << board_list[print_task_idx].first << " " << transcript << std::endl;
+                ++print_task_idx;
+            } else {
+                std::cerr << "[ERROR] task not valid" << std::endl;
+                std::exit(1);
+            }
+        }
+    }
+    std::cerr << "done in " << tim() - strt << " ms" << std::endl;
+}
+
+void self_play_lossless_lines_task(Board board, const std::string starting_board, Options *options, const int to_n_discs, std::vector<int> &transcript) {
+    if (board.n_discs() >= to_n_discs) {
+        std::cout << starting_board << " ";
+        for (int &cell: transcript) {
+            std::cout << idx_to_coord(cell);
+        }
+        std::cout << std::endl;
+        return;
+    }
+    if (board.is_end()) {
+        std::cout << starting_board << " ";
+        for (int &cell: transcript) {
+            std::cout << idx_to_coord(cell);
+        }
+        std::cout << std::endl;
+        return;
+    }
+    uint64_t legal = board.get_legal();
+    if (legal == 0) {
+        board.pass();
+        legal = board.get_legal();
+    }
+    Flip flip;
+    Search_result search_result = ai(board, options->level, true, 0, true, false);
+    calc_flip(&flip, &board, search_result.policy);
+    board.move_board(&flip);
+    transcript.emplace_back(search_result.policy);
+        self_play_lossless_lines_task(board, starting_board, options, to_n_discs, transcript);
+    transcript.pop_back();
+    board.undo_board(&flip);
+    legal ^= 1ULL << search_result.policy;
+    int best_score = search_result.value;
+    int alpha = best_score - 2; // accept best - 1
+    int beta = best_score;
+    while (legal) {
+        search_result = ai_legal_window(board, alpha, beta, options->level, true, 0, true, false, legal);
+        if (search_result.value <= alpha) {
+            break;
+        }
+        calc_flip(&flip, &board, search_result.policy);
+        board.move_board(&flip);
+        transcript.emplace_back(search_result.policy);
+            self_play_lossless_lines_task(board, starting_board, options, to_n_discs, transcript);
+        transcript.pop_back();
+        board.undo_board(&flip);
+        legal ^= 1ULL << search_result.policy;
+    }
+}
+
+void self_play_board_lossless_lines(std::vector<std::string> arg, Options *options, State *state) {
+    if (arg.size() < 2) {
+        std::cerr << "please input opening board file and to_n_discs" << std::endl;
+        std::exit(1);
+    }
+    std::string opening_board_file = arg[0];
+    int to_n_discs = 0;
+    try{
+        to_n_discs = std::stoi(arg[1]);
+    } catch (const std::invalid_argument& e) {
+        std::cout << arg[1] << " invalid argument" << std::endl;
+        std::exit(1);
+    } catch (const std::out_of_range& e) {
+        std::cout << arg[1] << " out of range" << std::endl;
+        std::exit(1);
+    }
+    if (to_n_discs > HW2) {
+        to_n_discs = HW2;
+    }
+    std::cerr << "selfplay with opening board file " << opening_board_file << " to " << to_n_discs << " discs" << std::endl;
+    std::ifstream ifs(opening_board_file);
+    if (!ifs) {
+        std::cerr << "[ERROR] can't open file " << opening_board_file << std::endl;
+        std::exit(1);
+    }
+    uint64_t strt = tim();
+    std::string line;
+    Flip flip;
+    Search_result result;
+    std::vector<std::pair<std::string, Board>> board_list;
+    while (std::getline(ifs, line)) {
+        std::pair<Board, int> board_player = convert_board_from_str(line);
+        if (board_player.second != BLACK && board_player.second != WHITE) {
+            std::cerr << "[ERROR] can't convert board " << line << std::endl;
+            std::exit(1);
+        }
+        board_list.emplace_back(std::make_pair(line, board_player.first));
+    }
+    int idx = 0;
+    for (std::pair<std::string, Board> start_position: board_list) {
+        ++idx;
+        double percent = (double)idx / board_list.size() * 100.0;
+        std::cerr << idx << "/" << board_list.size() << " " << percent << "%" << std::endl;
+        std::vector<int> transcript;
+        self_play_lossless_lines_task(start_position.second, start_position.first, options, to_n_discs, transcript);
+    }
+    std::cerr << "done in " << tim() - strt << " ms" << std::endl;
+}
+
+
+
+Board get_random_board(int n_random_moves) {
+    Board board;
+    Flip flip;
+    for (;;) {
+        board.reset();
+        for (int j = 0; j < n_random_moves && board.check_pass(); ++j) {
+            uint64_t legal = board.get_legal();
+            int random_idx = myrandrange(0, pop_count_ull(legal));
+            int t = 0;
+            for (uint_fast8_t cell = first_bit(&legal); legal; cell = next_bit(&legal)) {
+                if (t == random_idx) {
+                    calc_flip(&flip, &board, cell);
+                    break;
+                }
+                ++t;
+            }
+            board.move_board(&flip);
+        }
+        if (board.check_pass()) {
+            return board;
+        }
+    }
+    return board; // error
+}
+
+
+void solve_random(std::vector<std::string> arg, Options *options, State *state) {
+    int n_boards, n_random_moves;
+    if (arg.size() < 2) {
+        std::cerr << "[ERROR] [FATAL] please input arguments" << std::endl;
+        std::exit(1);
+    }
+    std::string str_n_boards = arg[0];
+    std::string str_n_random_moves = arg[1];
+    try{
+        n_boards = std::stoi(str_n_boards);
+        n_random_moves = std::stoi(str_n_random_moves);
+    } catch (const std::invalid_argument& e) {
+        std::cout << str_n_boards << " " << str_n_random_moves << " invalid argument" << std::endl;
+        std::exit(1);
+    } catch (const std::out_of_range& e) {
+        std::cout << str_n_boards << " " << str_n_random_moves << " out of range" << std::endl;
+        std::exit(1);
+    }
+    std::cerr << n_boards << " boards with " << n_random_moves << " random moves" << std::endl;
+    uint64_t strt = tim();
+    if (thread_pool.size() == 0) {
+        for (int i = 0; i < n_boards; ++i) {
+            Board board = get_random_board(n_random_moves);
+            Search_result result = ai(board, options->level, true, 0, false, options->show_log);
+            std::cout << board.to_str().substr(0, 64) << " " << result.value << std::endl;
+        }
+    } else {
+        int n_boards_done = 0;
+        std::vector<std::pair<Board, std::future<Search_result>>> tasks;
+        while (n_boards_done < n_boards) {
+            if (thread_pool.get_n_idle() && (int)tasks.size() < n_boards) {
+                bool pushed = false;
+                Board board = get_random_board(n_random_moves);
+                tasks.emplace_back(std::make_pair(board, thread_pool.push(&pushed, std::bind(&ai, board, options->level, true, 0, false, options->show_log))));
+                if (!pushed) {
+                    tasks.pop_back();
+                }
+            }
+            for (std::pair<Board, std::future<Search_result>> &task: tasks) {
+                if (task.second.valid()) {
+                    if (task.second.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+                        Search_result result = task.second.get();
+                        std::cout << task.first.to_str().substr(0, 64) << " " << result.value << std::endl;
+                        ++n_boards_done;
+                    }
+                }
+            }
+            if (0 < n_boards - n_boards_done && n_boards - n_boards_done < thread_pool.size()) {
+                std::vector<Board> boards_mid;
+                global_searching = false;
+                    for (std::pair<Board, std::future<Search_result>> &task: tasks) {
+                        if (task.second.valid()) {
+                            task.second.get();
+                            boards_mid.emplace_back(task.first);
+                        }
+                    }
+                global_searching = true;
+                for (Board &board: boards_mid) {
+                    Search_result result = ai(board, options->level, true, 0, true, options->show_log);
+                    std::cout << board.to_str().substr(0, 64) << " " << result.value << std::endl;
+                    ++n_boards_done;
+                }
+            }
+        }
+    }
+    global_searching = false;
+    std::cerr << "done in " << tim() - strt << " ms" << std::endl;
+}
+
+
+void perft_commandline(std::vector<std::string> arg) {
+    if (arg.size() < 2) {
+        std::cerr << "please input <depth> <mode>" << std::endl;
+        std::exit(1);
+    }
+    int depth, mode;
+    std::string str_depth = arg[0];
+    std::string str_mode = arg[1];
+    try{
+        depth = std::stoi(str_depth);
+        mode = std::stoi(str_mode);
+    } catch (const std::invalid_argument& e) {
+        std::cout << str_depth << " " << str_mode << " invalid argument" << std::endl;
+        std::exit(1);
+    } catch (const std::out_of_range& e) {
+        std::cout << str_depth << " " << str_mode << " out of range" << std::endl;
+        std::exit(1);
+    }
+    if (mode != 1 && mode != 2) {
+        std::cout << "mode must be 1 or 2, got " << mode << std::endl;
+        std::exit(1);
+    }
+    if (depth <= 0 || 60 < depth) {
+        std::cout << "depth must be in [1, 60], got " << depth << std::endl;
+        std::exit(1);
+    }
+    Board board;
+    board.reset();
+    uint64_t strt = tim();
+    uint64_t res;
+    if (mode == 1) {
+        res = perft(&board, depth, false);
+    } else {
+        res = perft_no_pass_count(&board, depth, false);
+    }
+    std::cout << "perft mode " << mode << " depth " << depth << " " << res << " leaves found in " << tim() - strt << " ms" << std::endl;
+}
+
+void minimax_commandline(std::vector<std::string> arg) {
+    if (arg.size() < 1) {
+        std::cerr << "please input <depth>" << std::endl;
+        std::exit(1);
+    }
+    int depth;
+    std::string str_depth = arg[0];
+    try{
+        depth = std::stoi(str_depth);
+    } catch (const std::invalid_argument& e) {
+        std::cout << str_depth << " invalid argument" << std::endl;
+        std::exit(1);
+    } catch (const std::out_of_range& e) {
+        std::cout << str_depth << " out of range" << std::endl;
+        std::exit(1);
+    }
+    if (depth <= 0 || 60 < depth) {
+        std::cout << "depth must be in [1, 60], got " << depth << std::endl;
+        std::exit(1);
+    }
+    Board board;
+    board.reset();
+    uint64_t strt = tim();
+    int res = minimax(&board, depth);
+    std::cout << "minimax depth " << depth << " value " << res << " in " << tim() - strt << " ms" << std::endl;
+}
+
+// ===== FILE: Egaroucid/src/console/advice.hpp =====
+
+/*
+    Egaroucid Project
+
+    @file advice.hpp
+        Advice for Human by Egaroucid
+    @date 2021-2025
+    @author Takuto Yamana
+    @license GPL-3.0-or-later
+*/
+
+#pragma once
+#include "lib/json.hpp"
+#include "./../engine/engine_all.hpp"
+#include "board_info.hpp"
+
+constexpr int ADVICE_VALUE_LEVEL = 21;
+
+constexpr uint64_t flip_inside_exclude_mask = 0xFFC381818181C3FFULL; //0xC3C300000000C3C3ULL;
+
+struct Advice_Move {
+    int policy;
+    int value;
+    int n_flipped_discs;
+    int n_flipped_discs_except_edge;
+    int n_flipped_direction;
+    Board board;
+    int player;
+    bool is_flip_inside;
+    bool is_flip_inside_creation;
+    bool is_op_flip_inside_creation;
+    bool is_op_flip_inside_deletion;
+    bool is_edge;
+    bool is_corner;
+    bool is_c;
+    bool is_x;
+    int next_corner_status;
+    int next_a_status;
+    bool is_corner_offer_avoidance;
+    int offering_avoid_corner;
+    bool is_corner_aiming;
+    int aiming_corner;
+    bool is_offer_corner;
+    int offering_corner;
+    bool is_mid_edge_side_flip;
+    int next_op_n_legal;
+    int next_pl_n_legal;
+    int n_connected_empty_squares;
+    bool op_canput;
+    int n_increased_stable_discs;
+};
+
+bool is_flip_inside(Board board, uint_fast8_t cell) {
+    Flip flip;
+    calc_flip(&flip, &board, cell);
+    uint64_t discs = board.player | board.opponent | (1ULL << cell);
+    uint64_t outside_flip =  (flip.flip & 0x7F7F7F7F7F7F7F7FULL) << 1;
+                outside_flip |= (flip.flip & 0xFEFEFEFEFEFEFEFEULL) >> 1;
+                outside_flip |= (flip.flip & 0x00FFFFFFFFFFFFFFULL) << HW;
+                outside_flip |= (flip.flip & 0xFFFFFFFFFFFFFF00ULL) >> HW;
+                outside_flip |= (flip.flip & 0x007F7F7F7F7F7F7FULL) << (HW + 1);
+                outside_flip |= (flip.flip & 0xFEFEFEFEFEFEFE00ULL) >> (HW + 1);
+                outside_flip |= (flip.flip & 0x00FEFEFEFEFEFEFEULL) << (HW - 1);
+                outside_flip |= (flip.flip & 0x7F7F7F7F7F7F7F00ULL) >> (HW - 1);
+    return (discs & outside_flip) == outside_flip;
+}
+
+bool has_flip_inside(Board board) {
+    bool has_flip_inside = false;
+    uint64_t legal = board.get_legal();
+    for (uint_fast8_t cell = first_bit(&legal); legal; cell = next_bit(&legal)) {
+        if ((1ULL << cell) & flip_inside_exclude_mask) { // exclude
+            continue;
+        }
+        has_flip_inside |= is_flip_inside(board, cell);
+    }
+    return has_flip_inside;
+}
+
+uint64_t get_flip_inside_places(Board board) {
+    uint64_t flip_inside_places = 0;
+    uint64_t legal = board.get_legal();
+    for (uint_fast8_t cell = first_bit(&legal); legal; cell = next_bit(&legal)) {
+        if ((1ULL << cell) & flip_inside_exclude_mask) { // exclude
+            continue;
+        }
+        if (is_flip_inside(board, cell)) {
+            flip_inside_places |= 1ULL << cell;
+        }
+    }
+    return flip_inside_places;
+}
+
+void print_advice(Board_info *board_info) {
+    nlohmann::json res;
+
+    Board board = board_info->board.copy();
+    res["board"] = board.to_str(board_info->player);
+    
+    res["n_discs"] = board.n_discs();
+
+    uint64_t legal = board.get_legal();
+    int n_legal = pop_count_ull(legal);
+    res["n_legal"] = n_legal;
+
+    std::vector<Advice_Move> moves;
+    {
+        int best_value = -100;
+        uint64_t legal_cpy = legal;
+        while (legal_cpy) {
+            Search_result search_result = ai_legal(board, ADVICE_VALUE_LEVEL, true, 0, true, false, legal_cpy);
+                Advice_Move move;
+                move.policy = search_result.policy;
+                move.value = search_result.value;
+                moves.emplace_back(move);
+                best_value = std::max(best_value, search_result.value);
+            legal_cpy ^= 1ULL << search_result.policy;
+        }
+        res["best_value"] = best_value;
+    }
+
+    res["has_flip_inside"] = has_flip_inside(board);
+    uint64_t flip_inside_board = get_flip_inside_places(board);
+
+    Board op_board = board.copy();
+    op_board.pass();
+    res["has_op_flip_inside"] = has_flip_inside(op_board);
+    uint64_t op_flip_inside_board = get_flip_inside_places(op_board);
+    
+    uint64_t op_legal = op_board.get_legal();
+
+    {
+        Flip flip;
+        for (Advice_Move &move: moves) {
+            calc_flip(&flip, &board, move.policy);
+            move.n_flipped_discs = pop_count_ull(flip.flip);
+            move.n_flipped_discs_except_edge = pop_count_ull(flip.flip & 0x007E7E7E7E7E7E00ULL);
+            move.n_flipped_direction = 0;
+            constexpr int dy[8] = {-1, -1, -1, 0,  0,  1, 1, 1};
+            constexpr int dx[8] = {-1,  0,  1, 1, -1, -1, 0, 1};
+            int y = move.policy / HW;
+            int x = move.policy % HW;
+            for (int dr = 0; dr < 8; ++dr) {
+                int ny = y + dy[dr];
+                int nx = x + dx[dr];
+                if (0 <= ny && ny < HW && 0 <= nx && nx < HW) {
+                    int cell = ny * HW + nx;
+                    if (flip.flip & (1ULL << cell)) {
+                        ++move.n_flipped_direction;
+                    }
+                }
+            }
+            board.move_board(&flip);
+                move.board = board;
+                move.player = board_info->player ^ 1;
+                move.next_op_n_legal = pop_count_ull(board.get_legal());
+                board.pass();
+                    move.next_pl_n_legal = pop_count_ull(board.get_legal());
+                board.pass();
+            board.undo_board(&flip);
+        }
+    }
+
+    {
+        for (Advice_Move &move: moves) {
+            if ((1ULL << move.policy) & flip_inside_exclude_mask) { // exclude
+                move.is_flip_inside = false;
+            } else {
+                move.is_flip_inside = is_flip_inside(board, move.policy);
+            }
+        }
+    }
+
+    {
+        Flip flip;
+        for (Advice_Move &move: moves) {
+            calc_flip(&flip, &board, move.policy);
+            board.move_board(&flip);
+            board.pass();
+                uint64_t next_flip_insides = get_flip_inside_places(board);
+                move.is_flip_inside_creation = next_flip_insides & (~flip_inside_board);
+            board.pass();
+            board.undo_board(&flip);
+        }
+    }
+
+    {
+        Flip flip;
+        for (Advice_Move &move: moves) {
+            calc_flip(&flip, &board, move.policy);
+            board.move_board(&flip);
+                uint64_t op_flip_inside_board_2 = get_flip_inside_places(board);
+                move.is_op_flip_inside_creation = (~op_flip_inside_board) & op_flip_inside_board_2;
+                if (res["has_op_flip_inside"]) {
+                    move.is_op_flip_inside_deletion = op_flip_inside_board & (~op_flip_inside_board_2);
+                } else {
+                    move.is_op_flip_inside_deletion = false;
+                }
+            board.undo_board(&flip);
+        }
+    }
+
+    for (Advice_Move &move: moves) {
+        move.is_edge = 0x7E8181818181817EULL & (1ULL << move.policy);
+    }
+    {
+        bool has_edge_move = false;
+        for (Advice_Move &move: moves) {
+            has_edge_move |= move.is_edge;
+        }
+        res["has_edge_move"] = has_edge_move;
+    }
+
+
+    for (Advice_Move &move: moves) {
+        move.is_corner = 0x8100000000000081ULL & (1ULL << move.policy);
+    }
+    {
+        bool has_corner_move = false;
+        for (Advice_Move &move: moves) {
+            has_corner_move |= move.is_corner;
+        }
+        res["has_corner_move"] = has_corner_move;
+    }
+
+    for (Advice_Move &move: moves) {
+        const int next_corner[HW2] = {
+            -1,  0, -1, -1, -1, -1,  7, -1, 
+             0,  0, -1, -1, -1, -1,  7,  7, 
+            -1, -1, -1, -1, -1, -1, -1, -1, 
+            -1, -1, -1, -1, -1, -1, -1, -1, 
+            -1, -1, -1, -1, -1, -1, -1, -1, 
+            -1, -1, -1, -1, -1, -1, -1, -1, 
+            56, 56, -1, -1, -1, -1, 63, 63, 
+            -1, 56, -1, -1, -1, -1, 63, -1
+        };
+        /*
+         0,  1,  2,  3,  4,  5,  6,  7, 
+         8,  9, 10, 11, 12, 13, 14, 15,
+        16, 17, 18, 19, 20, 21, 22, 23,
+        24, 25, 26, 27, 28, 29, 30, 31,
+        32, 33, 34, 35, 36, 37, 38, 39,
+        40, 41, 42, 43, 44, 45, 46, 47,
+        48, 49, 50, 51, 52, 53, 54, 55, 
+        56, 57, 58, 59, 60, 61, 62, 63
+        */
+        const int next_a[HW2] = {
+            -1,  2, -1, -1, -1, -1,  5, -1, 
+            16, -1, -1, -1, -1, -1, -1, 23, 
+            -1, -1, -1, -1, -1, -1, -1, -1, 
+            -1, -1, -1, -1, -1, -1, -1, -1, 
+            -1, -1, -1, -1, -1, -1, -1, -1, 
+            -1, -1, -1, -1, -1, -1, -1, -1, 
+            40, -1, -1, -1, -1, -1, -1, 47, 
+            -1, 58, -1, -1, -1, -1, 61, -1
+        };
+        move.is_c = (1ULL << move.policy) & 0x4281000000008142ULL;
+        move.is_x = (1ULL << move.policy) & 0x0042000000004200ULL;
+        move.next_corner_status = -1;
+        move.next_a_status = -1;
+        if (move.is_c | move.is_x) {
+            if (board.player & (1ULL << next_corner[move.policy])) {
+                move.next_corner_status = 0;
+            } else if (board.opponent & (1ULL << next_corner[move.policy])){
+                move.next_corner_status = 1;
+            }
+
+            if (move.is_c) {
+                if (board.player & (1ULL << next_a[move.policy])) {
+                    move.next_a_status = 0;
+                } else if (board.opponent & (1ULL << next_a[move.policy])){
+                    move.next_a_status = 1;
+                }
+            }
+        }
+    }
+
+    for (Advice_Move &move: moves) {
+        uint64_t empties = ~(board.player | board.opponent);
+        uint64_t bit = 1ULL << move.policy;
+        for (int i = 0; i < HW2; ++i) {
+            uint64_t n_bit = bit;
+            n_bit |= ((bit & 0x7F7F7F7F7F7F7F7FULL) << 1) & empties;
+            n_bit |= ((bit & 0xFEFEFEFEFEFEFEFEULL) >> 1) & empties;
+            n_bit |= ((bit & 0x00FFFFFFFFFFFFFFULL) << HW) & empties;
+            n_bit |= ((bit & 0xFFFFFFFFFFFFFF00ULL) >> HW) & empties;
+            n_bit |= ((bit & 0x00FEFEFEFEFEFEFEULL) << HW_M1) & empties;
+            n_bit |= ((bit & 0x7F7F7F7F7F7F7F00ULL) >> HW_M1) & empties;
+            n_bit |= ((bit & 0x007F7F7F7F7F7F7FULL) << HW_P1) & empties;
+            n_bit |= ((bit & 0xFEFEFEFEFEFEFE00ULL) >> HW_P1) & empties;
+            if (n_bit == bit) {
+                break;
+            }
+            bit = n_bit;
+        }
+        move.n_connected_empty_squares = pop_count_ull(bit);
+    }
+
+    for (Advice_Move &move: moves) {
+        Flip flip;
+        calc_flip(&flip, &board, move.policy);
+        board.move_board(&flip);
+            move.is_offer_corner = false;
+            move.offering_corner = -1;
+            uint64_t offering_corner = board.get_legal() & ~op_legal & 0x8100000000000081ULL;
+            if (offering_corner) {
+                move.is_offer_corner = true;
+                move.offering_corner = first_bit(&offering_corner);
+            }
+        board.undo_board(&flip);
+    }
+
+    for (Advice_Move &move: moves) {
+        Flip flip;
+        calc_flip(&flip, &board, move.policy);
+        move.is_mid_edge_side_flip = ((1ULL << move.policy) & 0x003C424242423C00ULL) && (flip.flip & 0x003C424242423C00ULL);
+    }
+
+    for (Advice_Move &move: moves) {
+        Flip flip;
+        calc_flip(&flip, &board, move.policy);
+        board.move_board(&flip);
+            move.is_corner_offer_avoidance = false;
+            move.offering_avoid_corner = -1;
+            uint64_t offering_avoid_corner_bit = ~board.get_legal() & op_legal & 0x8100000000000081ULL;
+            if (offering_avoid_corner_bit) {
+                move.is_corner_offer_avoidance = true;
+                move.offering_avoid_corner = first_bit(&offering_avoid_corner_bit);
+            }
+        board.undo_board(&flip);
+    }
+
+    for (Advice_Move &move: moves) {
+        Flip flip;
+        calc_flip(&flip, &board, move.policy);
+        board.move_board(&flip);
+        board.pass();
+            move.is_corner_aiming = false;
+            move.aiming_corner = -1;
+            uint64_t aiming_corner = board.get_legal() & ~legal & 0x8100000000000081ULL;
+            if (aiming_corner) {
+                move.is_corner_aiming = true;
+                move.aiming_corner = first_bit(&aiming_corner);
+            }
+        board.pass();
+        board.undo_board(&flip);
+    }
+
+    for (Advice_Move &move: moves) {
+        move.op_canput = op_legal & (1ULL << move.policy);
+    }
+
+    int n_stable = pop_count_ull(calc_stability(board.player, board.opponent));
+    for (Advice_Move &move: moves) {
+        Flip flip;
+        calc_flip(&flip, &board, move.policy);
+        board.move_board(&flip);
+            move.n_increased_stable_discs = pop_count_ull(calc_stability(board.opponent, board.player)) - n_stable;
+        board.undo_board(&flip);
+    }
+
+    {
+        bool has_c = false;
+        bool has_x = false;
+        for (Advice_Move &move: moves) {
+            has_c |= move.is_c;
+            has_x |= move.is_x;
+        }
+        res["has_c"] = has_c;
+        res["has_x"] = has_x;
+    }
+
+    res["moves"] = nlohmann::json::array();
+    for (Advice_Move &move: moves) {
+        nlohmann::json j = {
+            {"move", idx_to_coord(move.policy)},
+            {"value", move.value},
+            {"board", move.board.to_str(move.player)},
+            {"n_flipped_discs", move.n_flipped_discs},
+            {"n_flipped_discs_except_edge", move.n_flipped_discs_except_edge},
+            {"n_flipped_direction", move.n_flipped_direction},
+            {"is_flip_inside", move.is_flip_inside},
+            {"is_flip_inside_creation", move.is_flip_inside_creation},
+            {"is_op_flip_inside_creation", move.is_op_flip_inside_creation},
+            {"is_op_flip_inside_deletion", move.is_op_flip_inside_deletion},
+            {"is_edge", move.is_edge},
+            {"is_corner", move.is_corner},
+            {"is_c", move.is_c},
+            {"is_x", move.is_x},
+            {"next_corner_status", move.next_corner_status},
+            {"next_a_status", move.next_a_status},
+            {"is_corner_offer_avoidance", move.is_corner_offer_avoidance},
+            {"offering_avoid_corner", idx_to_coord(move.offering_avoid_corner)},
+            {"is_corner_aiming", move.is_corner_aiming},
+            {"aiming_corner", idx_to_coord(move.aiming_corner)},
+            {"is_offer_corner", move.is_offer_corner},
+            {"offering_corner", idx_to_coord(move.offering_corner)},
+            {"is_mid_edge_side_flip", move.is_mid_edge_side_flip},
+            {"next_op_n_legal", move.next_op_n_legal},
+            {"next_pl_n_legal", move.next_pl_n_legal},
+            {"n_connected_empty_squares", move.n_connected_empty_squares},
+            {"op_canput", move.op_canput},
+            {"n_increased_stable_discs", move.n_increased_stable_discs},
+        };
+        res["moves"].push_back(j);
+    }
+
+    std::cout << res.dump() << std::endl;
+}
+
+// ===== FILE: Egaroucid/src/console/board_info.hpp =====
+
+#pragma once
+
+#include <vector>
+#include <string>
+#include "./../engine/board.hpp"
+#include "./../engine/board_factory.hpp"
+#include "./../engine/board1.hpp"
+#include "./../engine/board2.hpp"
+#include "./../engine/board3.hpp"
+
+/*
+    @file board_info.hpp
+    @brief Container lưu trạng thái bàn cờ và lịch sử (Board_info)
+           Không dùng smart pointers; lưu Board bằng value.
+*/
+
+struct Board_info {
+    Board board;                    // hiện tại (bằng value)
+    int player = 0;                 // người đang đi: BLACK/WHITE
+    int board_variant = 0;          // 0 = default, 1 = Board1, 2 = Board2, 3 = Board3
+    std::vector<Board> boards;      // lịch sử các trạng thái (bằng value)
+    std::vector<int> players;       // lịch sử người đi (bằng value)
+    int ply_vec = 0;                // chỉ số hiện tại trong history
+
+    Board_info() = default;
+    ~Board_info() = default;
+
+    Board_info(const Board_info&) = default;
+    Board_info& operator=(const Board_info&) = default;
+    Board_info(Board_info&&) noexcept = default;
+    Board_info& operator=(Board_info&&) noexcept = default;
+
+    inline void reset() {
+        reset(0);
+    }
+
+    inline void reset(int style) {
+        player = BLACK;
+        board_variant = style;
+        boards.clear();
+        players.clear();
+        ply_vec = 0;
+
+        switch (style) {
+            case 1: {
+                Board1 tmp;
+                tmp.reset();
+                board = tmp.raw();  // ✅ lấy bản sao kiểu Board
+                break;
+            }
+            case 2: {
+                Board2 tmp;
+                tmp.reset();
+                board = tmp.raw();
+                break;
+            }
+            case 3: {
+                Board3 tmp;
+                tmp.reset();
+                board = tmp.raw();
+                break;
+            }
+            case 0:
+            default: {
+                Board tmp;
+                tmp.reset();
+                board = tmp;
+                break;
+            }
+        }
+
+        boards.emplace_back(board);
+        players.emplace_back(player);
+        ply_vec = static_cast<int>(boards.size()) - 1;
+    }
+
+    inline void set_variant(int variant) {
+        reset(variant);
+    }
+
+    inline void push_history() {
+        if (ply_vec + 1 < static_cast<int>(boards.size())) {
+            boards.resize(ply_vec + 1);
+            players.resize(ply_vec + 1);
+        }
+        boards.emplace_back(board);
+        players.emplace_back(player);
+        ply_vec = static_cast<int>(boards.size()) - 1;
+    }
+
+    inline bool undo(int moves = 1) {
+        if (moves <= 0 || ply_vec <= 0) return false;
+        int target = ply_vec - moves;
+        if (target < 0) target = 0;
+        board = boards[target];
+        player = players[target];
+        ply_vec = target;
+        return true;
+    }
+
+    inline bool redo(int moves = 1) {
+        if (moves <= 0) return false;
+        int max_idx = static_cast<int>(boards.size()) - 1;
+        if (ply_vec >= max_idx) return false;
+        int target = ply_vec + moves;
+        if (target > max_idx) target = max_idx;
+        board = boards[target];
+        player = players[target];
+        ply_vec = target;
+        return true;
+    }
+
+    inline void set_board(const Board& b, bool push = true) {
+        board = b;
+        if (push) push_history();
+        else {
+            if (!boards.empty() && ply_vec >= 0 && ply_vec < static_cast<int>(boards.size())) {
+                boards[ply_vec] = board;
+                players[ply_vec] = player;
+            } else {
+                boards.emplace_back(board);
+                players.emplace_back(player);
+                ply_vec = static_cast<int>(boards.size()) - 1;
+            }
+        }
+    }
+
+    inline Board& ref() { return board; }
+    inline const Board& cref() const { return board; }
+
+    inline Board_info copy() const {
+        return *this;
+    }
+};
+
+// ===== FILE: Egaroucid/src/console/command.hpp =====
+
+#pragma once
+#include <iostream>
+#include <string>
+#include <sstream>
+#include <cctype>
+#include <algorithm>
+#include "./../engine/engine_all.hpp"
+#include "board_info.hpp"
+#include "option.hpp"
+#include "state.hpp"
+#include "close.hpp"
+#include "print.hpp"
+#include "command_definition.hpp"
+#include "advice.hpp"
+
+#define ANALYZE_MISTAKE_THRESHOLD 4
+
+std::string get_command_line() {
+    std::cerr << "> ";
+    std::string cmd_line;
+    std::getline(std::cin, cmd_line);
+    return cmd_line;
+}
+
+void split_cmd_arg(std::string cmd_line, std::string *cmd, std::string *arg) {
+    std::istringstream iss(cmd_line);
+    iss >> *cmd;
+    iss.get();
+    std::getline(iss, *arg);
+}
+
+int get_command_id(std::string cmd) {
+    for (int i = 0; i < N_COMMANDS; ++i) {
+        if (std::find(command_data[i].names.begin(), command_data[i].names.end(), cmd) != command_data[i].names.end())
+            return command_data[i].id;
+    }
+    return COMMAND_NOT_FOUND;
+}
+
+void allocate_time(Options *options, State *state) {
+    if (options->time_allocated_seconds != TIME_NOT_ALLOCATED) {
+        state->remaining_time_msec_black = 1000ULL * options->time_allocated_seconds;
+        state->remaining_time_msec_white = 1000ULL * options->time_allocated_seconds;
+    }
+}
+
+void update_time(int player, State *state, Options *options, uint64_t elapsed) {
+    if (options->time_allocated_seconds != TIME_NOT_ALLOCATED) {
+        uint64_t *remaining_time_msec;
+        if (player == BLACK) {
+            remaining_time_msec = &state->remaining_time_msec_black;
+        } else {
+            remaining_time_msec = &state->remaining_time_msec_white;
+        }
+        if (elapsed <= *remaining_time_msec) {
+            *remaining_time_msec -= elapsed;
+        } else {
+            *remaining_time_msec = 0;
+        }
+    }
+}
+
+void init_board(Board_info *board, Options *options, State *state) {
+    board->reset();
+    allocate_time(options, state);
+}
+
+void new_board(Board_info *board, Options *options, State *state) {
+    board->board = board->boards[0];
+    board->player = board->players[0];
+    board->boards.clear();
+    board->players.clear();
+    board->boards.emplace_back(board->board);
+    board->players.emplace_back(board->player);
+    board->ply_vec = 0;
+    allocate_time(options, state);
+}
+
+bool outside(int y, int x) {
+    return y < 0 || HW <= y || x < 0 || HW <= x;
+}
+
+void play(Board_info *board, Options *options, std::string transcript) {
+    if (transcript.length() % 2) {
+        std::cerr << "[ERROR] invalid transcript length" << std::endl;
+        return;
+    }
+    Board_info board_bak = board->copy();
+    while (board->ply_vec < (int)board->boards.size() - 1) {
+        board->boards.pop_back();
+        board->players.pop_back();
+    }
+    Flip flip;
+    for (int i = 0; i < (int)transcript.length(); i += 2) {
+        if (options->noautopass) {
+            if (std::tolower((unsigned char)transcript[i]) == 'p' && std::tolower((unsigned char)transcript[i + 1]) == 's') {
+                if (board->board.get_legal() == 0) {
+                    board->board.pass();
+                    board->player ^= 1;
+                    board->boards.emplace_back(board->board);
+                    board->players.emplace_back(board->player);
+                    ++board->ply_vec;
+                    continue;
+                } else {
+                    std::cerr << "[ERROR] can't pass here" << std::endl;
+                    *board = board_bak;
+                    return;
+                }
+            }
+        }
+        int x = HW_M1 - (int)(transcript[i] - 'a');
+        if (x >= HW)
+            x = HW_M1 - (int)(transcript[i] - 'A');
+        int y = HW_M1 - (int)(transcript[i + 1] - '1');
+        if (outside(y, x)) {
+            std::cerr << "[ERROR] invalid coordinate " << transcript[i] << transcript[i + 1] << std::endl;
+            *board = board_bak;
+            return;
+        }
+        calc_flip(&flip, &board->board, y * HW + x);
+        if (flip.flip == 0ULL) {
+            std::cerr << "[ERROR] invalid move " << transcript[i] << transcript[i + 1] << std::endl;
+            *board = board_bak;
+            return;
+        }
+        board->board.move_board(&flip);
+        board->player ^= 1;
+        if (board->board.is_end() && i < (int)transcript.length() - 2) {
+            std::cerr << "[ERROR] game over found before checking all transcript. remaining codes ignored." << std::endl;
+            return;
+        }
+        if (!options->noautopass) {
+            if (board->board.get_legal() == 0ULL) {
+                board->board.pass();
+                board->player ^= 1;
+            }
+        }
+        board->boards.emplace_back(board->board);
+        board->players.emplace_back(board->player);
+        ++board->ply_vec;
+    }
+}
+
+int calc_remain(std::string arg) {
+    int remain = 1;
+    try{
+        remain = std::stoi(arg);
+    } catch (...) {
+        remain = 1;
+    }
+    if (remain <= 0)
+        remain = 1;
+    return remain;
+}
+
+void undo(Board_info *board, int remain) {
+    if (remain == 0)
+        return;
+    if (board->ply_vec <= 0) {
+        std::cerr << "[ERROR] can't undo" << std::endl;
+        return;
+    }
+    --board->ply_vec;
+    board->board = board->boards[board->ply_vec];
+    board->player = board->players[board->ply_vec];
+    undo(board, remain - 1);
+}
+
+void redo(Board_info *board, int remain) {
+    if (remain == 0)
+        return;
+    if (board->ply_vec >= (int)board->boards.size() - 1) {
+        std::cerr << "[ERROR] can't redo" << std::endl;
+        return;
+    }
+    ++board->ply_vec;
+    board->board = board->boards[board->ply_vec];
+    board->player = board->players[board->ply_vec];
+    redo(board, remain - 1);
+}
+
+Search_result go_noprint(Board_info *board, Options *options, State *state) {
+    if (board->board.get_legal() == 0) {
+        if (board->board.is_end()) {
+            std::cerr << "[ERROR] game over" << std::endl;
+            Search_result res;
+            return res;
+        } else {
+            Search_result res;
+            res.policy = MOVE_PASS;
+            res.time = 0;
+            res.nodes = 0;
+            res.nps = 0;
+            board->board.pass();
+            board->player ^= 1;
+            board->boards.emplace_back(board->board);
+            board->players.emplace_back(board->player);
+            ++board->ply_vec;
+            return res;
+        }
+    }
+    Search_result result;
+    if (options->time_allocated_seconds == TIME_NOT_ALLOCATED) {
+        if (options->play_loss && myrandom() < options->play_loss_ratio) {
+            result = ai_loss(board->board, options->level, true, 0, true, options->show_log, options->play_loss_max);
+        } else {
+            result = ai(board->board, options->level, true, 0, true, options->show_log);
+        }
+    } else {
+        uint64_t remaining_time_msec = 10;
+        if (board->player == BLACK) {
+            remaining_time_msec = state->remaining_time_msec_black;
+        } else {
+            remaining_time_msec = state->remaining_time_msec_white;
+        }
+        bool searching = true;
+        result = ai_time_limit(board->board, true, 0, true, options->show_log, remaining_time_msec, THREAD_ID_NONE, &searching);
+    }
+    Flip flip;
+    calc_flip(&flip, &board->board, result.policy);
+    board->board.move_board(&flip);
+    board->player ^= 1;
+    bool pass_found = board->board.get_legal() == 0ULL;
+    if (pass_found && !options->noautopass) {
+        board->board.pass();
+        board->player ^= 1;
+    }
+    while (board->ply_vec < (int)board->boards.size() - 1) {
+        board->boards.pop_back();
+        board->players.pop_back();
+    }
+    board->boards.emplace_back(board->board);
+    board->players.emplace_back(board->player);
+    ++board->ply_vec;
+    return result;
+}
+
+void go(Board_info *board, Options *options, State *state, uint64_t start_time) {
+    int before_player = board->player;
+    Search_result result = go_noprint(board, options, state);
+    update_time(before_player, state, options, tim() - start_time);
+    if (options->show_log) {
+        print_search_result_debug(result, options, state);
+    }
+    if (options->quiet) {
+        print_search_result_quiet(result, options);
+    } else {
+        print_search_result(result, options, state);
+    }
+}
+
+void setboard(Board_info *board, Options *options, State *state, std::string board_str) {
+    std::pair<Board, int> board_player = convert_board_from_str(board_str);
+    Board new_board = board_player.first;
+    int player = board_player.second;
+    if (player != BLACK && player != WHITE) {
+        return;
+    }
+    board->board = new_board;
+    board->player = player;
+    board->boards.clear();
+    board->players.clear();
+    board->boards.emplace_back(board->board);
+    board->players.emplace_back(board->player);
+    board->ply_vec = 0;
+    allocate_time(options, state);
+}
+
+void set_level(Options *options, std::string level_str) {
+    try {
+        int level = std::stoi(level_str);
+        if (1 <= level && level < N_LEVEL) {
+            options->level = level;
+            if (options->show_log)
+                std::cerr << "level set to " << options->level << std::endl;
+        } else
+            std::cerr << "[ERROR] level out of range" << std::endl;
+    } catch (...) {
+        std::cerr << "[ERROR] invalid level" << std::endl;
+    }
+}
+
+void set_mode(Options *options, std::string mode_str) {
+    try {
+        int mode = std::stoi(mode_str);
+        if (0 <= mode && mode < 4) {
+            options->mode = mode;
+            if (options->show_log)
+                std::cerr << "mode set to " << options->mode << std::endl;
+        } else
+            std::cerr << "[ERROR] mode out of range" << std::endl;
+    } catch (...) {
+        std::cerr << "[ERROR] invalid mode" << std::endl;
+    }
+}
+
+void hint(Board_info *board, Options *options, State *state, std::string arg) {
+    int n_show = 1;
+    try {
+        n_show = std::stoi(arg);
+        if (n_show < 1)
+            n_show = 1;
+    } catch (...) {
+        n_show = 1;
+    }
+    uint64_t legal = board->board.get_legal();
+    if (n_show > pop_count_ull(legal))
+        n_show = pop_count_ull(legal);
+    std::vector<Book_value> result_book_value = book.get_all_moves_with_value(&board->board);
+    std::vector<Search_result> result;
+    for (Book_value elem: result_book_value)
+        result.emplace_back(elem.to_search_result());
+    if ((int)result.size() < n_show) {
+        for (const Search_result &elem: result)
+            legal ^= 1ULL << elem.policy;
+        int n_show_ai = n_show - (int)result.size();
+        for (int i = 0; i < n_show_ai; ++i) {
+            Search_result elem = ai_legal(board->board, options->level, true, 0, true, false, legal);
+            result.emplace_back(elem);
+            legal ^= 1ULL << elem.policy;
+        }
+    }
+    std::sort(result.rbegin(), result.rend());
+    print_search_result_head();
+    for (int i = 0; i < n_show; ++i) {
+        print_search_result_body(result[i], options, state);
+    }
+}
+
+void analyze(Board_info *board, Options *options, State *state) {
+    print_analyze_head();
+    Analyze_summary summary[2];
+    for (int i = (int)board->boards.size() - 2; i >= 0; --i) {
+        Board n_board = board->boards[i];
+        uint64_t played_board = (n_board.player | n_board.opponent) ^ (board->boards[i + 1].player | board->boards[i + 1].opponent);
+        if (pop_count_ull(played_board) == 1) {
+            uint_fast8_t played_move = ctz(played_board);
+            Analyze_result result = ai_analyze(n_board, options->level, true, played_move);
+            std::string judge = "";
+            ++summary[board->players[i]].n_ply;
+            if (result.alt_score > result.played_score) {
+                if (result.alt_score - result.played_score >= ANALYZE_MISTAKE_THRESHOLD) {
+                    ++summary[board->players[i]].n_mistake;
+                    summary[board->players[i]].sum_mistake += result.alt_score - result.played_score;
+                    judge = "Mistake";
+                } else{
+                    ++summary[board->players[i]].n_disagree;
+                    summary[board->players[i]].sum_disagree += result.alt_score - result.played_score;
+                    judge = "Disagree";
+                }
+            }
+            int ply = n_board.n_discs() - 3;
+            print_analyze_body(result, ply, board->players[i], judge);
+        }
+    }
+    print_analyze_foot(summary);
+}
+
+void generate_problems(Options *options, std::string arg) {
+    int pos = arg.find(' ');
+    if (pos == std::string::npos) {
+        std::cerr << "[ERROR] please input <n_empties> <n_problems>" << std::endl;
+    } else {
+        std::string n_empties_str = arg.substr(0, pos);
+        std::string n_problems_str = arg.substr(pos + 1);
+        try {
+            int n_empties = std::stoi(n_empties_str);
+            int n_problems = std::stoi(n_problems_str);
+            problem_generator(n_empties, n_problems, options->level);
+        } catch (...) {
+            std::cerr << "[ERROR] invalid argument" << std::endl;
+        }
+    }
+}
+
+void settime(State *state, Options *options, std::string arg) {
+    int pos = arg.find(' ');
+    if (pos == std::string::npos) {
+        std::cerr << "[ERROR] please input <color> <time>" << std::endl;
+    } else {
+        std::string color = arg.substr(0, pos);
+        std::string time_sec_str = arg.substr(pos + 1);
+        try {
+            uint64_t time_msec = 1000ULL * (uint64_t)std::stoi(time_sec_str);
+            if (is_black_like_char(color[0])) {
+                if (options->time_allocated_seconds == TIME_NOT_ALLOCATED) {
+                    options->time_allocated_seconds = 0;
+                }
+                state->remaining_time_msec_black = time_msec;
+            } else if (is_white_like_char(color[0])) {
+                if (options->time_allocated_seconds == TIME_NOT_ALLOCATED) {
+                    options->time_allocated_seconds = 0;
+                }
+                state->remaining_time_msec_white = time_msec;
+            } else {
+                std::cerr << "[ERROR] can't recognize color: " << color << std::endl;
+            }
+        } catch (...) {
+            std::cerr << "[ERROR] invalid argument" << std::endl;
+        }
+    }
+}
+
+void check_command(Board_info *board, State *state, Options *options) {
+    uint64_t start_time = tim();
+    std::string cmd_line = get_command_line();
+    if (options->show_log) {
+        std::cerr << "received cmd: " << cmd_line << std::endl;
+    }
+    if (options->ponder && state->ponder_searching && state->ponder_future.valid()) {
+        state->ponder_searching = false;
+        state->ponder_future.get();
+    }
+    std::string cmd, arg;
+    split_cmd_arg(cmd_line, &cmd, &arg);
+    int cmd_id = get_command_id(cmd);
+    int player_before = board->player;
+    switch (cmd_id) {
+        case COMMAND_NOT_FOUND:
+            std::cout << "[ERROR] command `" << cmd << "` not found" << std::endl;
+            break;
+        case CMD_ID_HELP:
+            print_commands_list();
+            break;
+        case CMD_ID_EXIT:
+            close(state, options);
+            break;
+        case CMD_ID_VERSION:
+            print_version();
+            break;
+        case CMD_ID_INIT:
+            init_board(board, options, state);
+            break;
+        case CMD_ID_NEW:
+            new_board(board, options, state);
+            break;
+        case CMD_ID_PLAY:
+            play(board, options, arg);
+            update_time(player_before, state, options, tim() - start_time);
+            break;
+        case CMD_ID_UNDO:
+            undo(board, calc_remain(arg));
+            break;
+        case CMD_ID_REDO:
+            redo(board, calc_remain(arg));
+            break;
+        case CMD_ID_GO:
+            go(board, options, state, start_time);
+            break;
+        case CMD_ID_SETBOARD:
+            setboard(board, options, state, arg);
+            break;
+        case CMD_ID_LEVEL:
+            set_level(options, arg);
+            break;
+        case CMD_ID_LEVELINFO:
+            print_level_info();
+            break;
+        case CMD_ID_MODE:
+            set_mode(options, arg);
+            break;
+        case CMD_ID_HINT:
+            hint(board, options, state, arg);
+            break;
+        case CMD_ID_ANALYZE:
+            analyze(board, options, state);
+            break;
+        case CMD_ID_CLEARCACHE:
+            transposition_table.init();
+            break;
+        case CMD_ID_GENPROBLEM:
+            generate_problems(options, arg);
+            break;
+        case CMD_ID_TRANSCRIPT:
+            print_transcript(board->boards);
+            break;
+        case CMD_ID_SETTIME:
+            settime(state, options, arg);
+            break;
+        case CMD_ID_ADVISE:
+            print_advice(board);
+            break;
+        case CMD_ID_BOARD1:
+            board->board = Board1().raw();
+            board->reset(1);
+            board->player = BLACK;
+            std::cerr << "[INFO] Switched to Board1\n";
+            break;
+        case CMD_ID_BOARD2:
+            board->board = Board2().raw();
+            board->reset(2);
+            board->player = BLACK;
+            std::cerr << "[INFO] Switched to Board2\n";
+            break;
+        case CMD_ID_BOARD3:
+            board->board = Board3().raw();
+            board->reset(3);
+            board->player = BLACK;
+            std::cerr << "[INFO] Switched to Board3\n";
+            break;
+        case CMD_ID_BOARD_DEFAULT:
+            board->board = Board();
+            board->reset(0);
+            board->player = BLACK;
+            std::cerr << "[INFO] Switched to default Board\n";
+            break;
+        default:
+            break;
+    }
+}
+
+// ===== FILE: Egaroucid/src/console/print.hpp =====
+
+/*
+    Egaroucid Project
+
+    @file print.hpp
+        Functions about printing on console
+    @date 2021-2025
+    @author Takuto Yamana
+    @license GPL-3.0-or-later
+*/
+
+#pragma once
+#include <iostream>
+#include <iomanip>
+#include <unordered_map>
+#include "./../engine/engine_all.hpp"
+#include "option.hpp"
+#include "info.hpp"
+#include "command_definition.hpp"
+#include "commandline_option_definition.hpp"
+#include "function.hpp"
+#if INCLUDE_GGS
+    #include "ggs.hpp"
+#endif
+
+#define COUT_TAB "  "
+#define VERSION_TAB_SIZE 10
+#define COMMANDLINE_OPTION_HELP_TAB_SIZE 40
+#define COMMAND_HELP_TAB_SIZE 40
+#define LEVEL_INFO_TAB_SIZE 5
+#define LEVEL_MIDGAME_TAB_SIZE 15
+#define LEVEL_DEPTH_TAB_SIZE 10
+#define SEARCH_RESULT_TAB_SIZE 15
+#define ANALYZE_TAB_SIZE 13
+#define ANALYZE_SUMMARY_TAB_SIZE 13
+
+struct Analyze_summary {
+    int n_ply;
+    int n_disagree;
+    int sum_disagree;
+    int n_mistake;
+    int sum_mistake;
+
+    Analyze_summary() {
+        n_ply = 0;
+        n_disagree = 0;
+        sum_disagree = 0;
+        n_mistake = 0;
+        sum_mistake = 0;
+    }
+};
+
+void print_version() {
+    std::cout << EGAROUCID_NAME << " " << EGAROUCID_VERSION << std::endl;
+    std::cout << COUT_TAB << std::left << std::setw(VERSION_TAB_SIZE) << "@date ";
+    std::cout << EGAROUCID_DATE << std::endl;
+    std::cout << COUT_TAB << std::left << std::setw(VERSION_TAB_SIZE) << "@build ";
+    std::cout << __DATE__ << " " << __TIME__ << " JST" << std::endl;
+    std::cout << COUT_TAB << std::left << std::setw(VERSION_TAB_SIZE) << "@author ";
+    std::cout << EGAROUCID_AUTHOR << std::endl;
+    std::cout << COUT_TAB << std::left << std::setw(VERSION_TAB_SIZE) << "@license ";
+    std::cout << EGAROUCID_LICENSE << std::endl;
+    std::cout << COUT_TAB << std::left << std::setw(VERSION_TAB_SIZE) << "@website ";
+    std::cout << EGAROUCID_URL << std::endl;
+    std::cout << std::endl;
+}
+
+void print_commandline_options_list() {
+    std::cout << "Commandline options:" << std::endl;
+    for (int i = 0; i < N_COMMANDLINE_OPTIONS; ++i) {
+        if (commandline_option_data[i].id != ID_NONE) {
+            std::string s;
+            for (int j = 0; j < (int)commandline_option_data[i].names.size(); ++j) {
+                if (j != 0)
+                    s += "|";
+                s += commandline_option_data[i].names[j];
+            }
+            s += " " + commandline_option_data[i].arg;
+            std::cout << COUT_TAB;
+            std::cout << std::left << std::setw(COMMANDLINE_OPTION_HELP_TAB_SIZE) << s;
+            std::cout << commandline_option_data[i].description;
+            std::cout << std::endl;
+        }
+    }
+    std::cout << std::endl;
+}
+
+void print_commands_list() {
+    std::cout << "Commands:" << std::endl;
+    for (int i = 0; i < N_COMMANDS; ++i) {
+        if (command_data[i].id != CMD_ID_NONE) {
+            std::string s;
+            for (int j = 0; j < (int)command_data[i].names.size(); ++j) {
+                if (j != 0)
+                    s += "|";
+                s += command_data[i].names[j];
+            }
+            s += " " + command_data[i].arg;
+            std::cout << COUT_TAB;
+            std::cout << std::left << std::setw(COMMAND_HELP_TAB_SIZE) << s;
+            std::cout << command_data[i].description;
+            std::cout << std::endl;
+        }
+    }
+    std::cout << std::endl;
+}
+
+void print_help() {
+    print_version();
+    print_commandline_options_list();
+    print_commands_list();
+}
+
+void print_level_info() {
+    const std::string probability_char = "_-=+^#";
+    std::cout << "Level definition:" << std::endl;
+    std::cout << COUT_TAB;
+    std::cout << "Endgame probability" << std::endl;
+    for (int i = 0; i < N_SELECTIVITY_LEVEL; ++i)
+        std::cout << COUT_TAB << COUT_TAB << " " << SELECTIVITY_PERCENTAGE[i] << "%: " << probability_char[i] << std::endl;
+    std::cout << COUT_TAB;
+    std::cout << "|";
+    std::cout << std::right << std::setw(LEVEL_INFO_TAB_SIZE) << "Level";
+    std::cout << "|";
+    std::cout << std::left << std::setw(LEVEL_MIDGAME_TAB_SIZE) << "Midgame";
+    std::cout << "|";
+    std::string str_endgame_10 = "Endgame " + std::to_string(LEVEL_DEPTH_TAB_SIZE);
+    std::cout << std::right << std::setw(LEVEL_DEPTH_TAB_SIZE) << str_endgame_10;
+    std::cout << "|";
+    for (int depth = LEVEL_DEPTH_TAB_SIZE * 2; depth <= 60; depth += LEVEL_DEPTH_TAB_SIZE) {
+        std::cout << std::right << std::setw(LEVEL_DEPTH_TAB_SIZE) << depth;
+        std::cout << "|";
+    }
+    std::cout << std::endl;
+    for (int level = 1; level < N_LEVEL; ++level) {
+        std::cout << COUT_TAB;
+        std::cout << "|";
+        std::cout << std::right << std::setw(LEVEL_INFO_TAB_SIZE) << level;
+        std::cout << "|";
+        std::string s;
+        if (get_level_midsearch(level, 0))
+            s = std::to_string(level_definition[level].mid_lookahead) + " moves@" + std::to_string(SELECTIVITY_PERCENTAGE[level_definition[level].mid_mpc_level]) + "%";
+        else
+            s = "None";
+        std::cout << std::right << std::setw(LEVEL_MIDGAME_TAB_SIZE) << s;
+        for (int n_moves = 0; n_moves < HW2 - 4; ++n_moves) {
+            if (n_moves % LEVEL_DEPTH_TAB_SIZE == 0)
+                std::cout << "|";
+            bool is_mid_search;
+            uint_fast8_t mpc_level;
+            int depth;
+            get_level(level, n_moves, &is_mid_search, &depth, &mpc_level);
+            if (is_mid_search)
+                std::cout << " ";
+            else{
+                std::cout << probability_char[mpc_level];
+            }
+        }
+        std::cout << "|";
+        std::cout << std::endl;
+    }
+}
+
+void print_board_info(Board_info *board, State *state, Options *options) {
+    std::string remaining_time_str_black = "-";
+    std::string remaining_time_str_white = "-";
+    if (options->time_allocated_seconds != TIME_NOT_ALLOCATED) {
+        double remaining_time_sec_black = (double)state->remaining_time_msec_black / 1000.0;
+        double remaining_time_sec_white = (double)state->remaining_time_msec_white / 1000.0;
+        std::stringstream ss1;
+        ss1 << std::fixed << std::setprecision(2) << remaining_time_sec_black;
+        remaining_time_str_black = ss1.str();
+        std::stringstream ss2;
+        ss2 << std::fixed << std::setprecision(2) << remaining_time_sec_white;
+        remaining_time_str_white = ss2.str();
+    }
+    uint64_t black = board->board.player;
+    uint64_t white = board->board.opponent;
+    if (board->player == WHITE) {
+        std::swap(black, white);
+    }
+    std::cout << "  ";
+    for (int x = 0; x < HW; ++x) {
+        std::cout << (char)('a' + x) << " ";
+    }
+    std::cout << std::endl;
+    for (int y = 0; y < HW; ++y) {
+        std::cout << y + 1 << " ";
+        for (int x = 0; x < HW; ++x) {
+            int cell = HW2_M1 - (y * HW + x);
+            if ((board->board.invalid_mask >> cell) & 1ULL) {
+    std::cout << "# ";
+} else if (1 & (black >> cell)) {
+    std::cout << "X ";
+} else if (1 & (white >> cell)) {
+    std::cout << "O ";
+} else {
+    std::cout << ". ";
+            }
+        }
+        if (y == 1) {
+            std::cout << COUT_TAB;
+            if (board->board.is_end()) {
+                std::cout << "GAME OVER";
+            } else if (board->player == BLACK) {
+                std::cout << "BLACK to move";
+            } else {
+                std::cout << "WHITE to move";
+            }
+        } else if (y == 2) {
+            std::cout << COUT_TAB;
+            std::cout << "ply " << board->board.n_discs() - 3 << " " << HW2 - board->board.n_discs() - board->board.n_blocked_squares() << " empties";
+        } else if (y == 3) {
+            std::cout << COUT_TAB;
+            int black_discs, white_discs;
+            black_discs = board->board.count_player();
+            white_discs = board->board.count_opponent();
+            if (board->player)
+                std::swap(black_discs, white_discs);
+            std::cout << "BLACK: " << black_discs << " WHITE: " << white_discs;
+        } else if (y == 4) {
+            std::cout << COUT_TAB;
+            std::cout << "BLACK Remaining " << remaining_time_str_black << "s";
+        } else if (y == 5) {
+            std::cout << COUT_TAB;
+            std::cout << "WHITE Remaining " << remaining_time_str_white << "s";
+        }
+        std::cout << std::endl;
+    }
+}
+
+inline void print_search_result_body(Search_result result, const Options *options, const State *state) {
+    if (result.policy == MOVE_PASS) {
+        std::cout << "|";
+        std::cout << std::right << std::setw(SEARCH_RESULT_TAB_SIZE) << "-";
+        std::cout << "|";
+        std::cout << std::right << std::setw(SEARCH_RESULT_TAB_SIZE) << "-";
+        std::cout << "|";
+        std::cout << std::right << std::setw(SEARCH_RESULT_TAB_SIZE) << "ps";
+        std::cout << "|";
+        std::cout << std::right << std::setw(SEARCH_RESULT_TAB_SIZE) << "-";
+        std::cout << "|";
+    } else {
+        std::string s;
+        std::string level_str = "-";
+        if (result.depth == SEARCH_BOOK) {
+            level_str = "Book";
+        } else if (options->time_allocated_seconds == TIME_NOT_ALLOCATED) {
+            level_str = std::to_string(result.level);
+        }
+        std::string depth_str = "-";
+        if (result.depth != SEARCH_BOOK) {
+            depth_str = std::to_string(result.depth) + "@" + std::to_string(result.probability) + "%";
+        }
+        std::cout << "|";
+        std::cout << std::right << std::setw(SEARCH_RESULT_TAB_SIZE) << level_str;
+        std::cout << "|";
+        std::cout << std::right << std::setw(SEARCH_RESULT_TAB_SIZE) << depth_str;
+        std::cout << "|";
+        std::cout << std::right << std::setw(SEARCH_RESULT_TAB_SIZE) << idx_to_coord(result.policy);
+        std::cout << "|";
+        if (result.value >= 0) {
+            s = "+" + std::to_string(result.value);
+        } else {
+            s = std::to_string(result.value);
+        }
+        std::cout << std::right << std::setw(SEARCH_RESULT_TAB_SIZE) << s;
+        std::cout << "|";
+    }
+    std::cout << std::right << std::setw(SEARCH_RESULT_TAB_SIZE) << ms_to_time(result.time);
+    std::cout << "|";
+    std::cout << std::right << std::setw(SEARCH_RESULT_TAB_SIZE) << result.nodes;
+    std::cout << "|";
+    std::cout << std::right << std::setw(SEARCH_RESULT_TAB_SIZE) << result.nps;
+    std::cout << "|";
+    std::cout << std::endl;
+}
+
+inline void print_search_result_head() {
+    std::cout << "|";
+    std::cout << std::right << std::setw(SEARCH_RESULT_TAB_SIZE) << "Level";
+    std::cout << "|";
+    std::cout << std::right << std::setw(SEARCH_RESULT_TAB_SIZE) << "Depth";
+    std::cout << "|";
+    std::cout << std::right << std::setw(SEARCH_RESULT_TAB_SIZE) << "Move";
+    std::cout << "|";
+    std::cout << std::right << std::setw(SEARCH_RESULT_TAB_SIZE) << "Score";
+    std::cout << "|";
+    std::cout << std::right << std::setw(SEARCH_RESULT_TAB_SIZE) << "Time";
+    std::cout << "|";
+    std::cout << std::right << std::setw(SEARCH_RESULT_TAB_SIZE) << "Nodes";
+    std::cout << "|";
+    std::cout << std::right << std::setw(SEARCH_RESULT_TAB_SIZE) << "NPS";
+    std::cout << "|";
+    std::cout << std::endl;
+}
+
+inline void print_search_result_debug(Search_result result, const Options *options, const State *state) {
+    if (result.policy == MOVE_PASS) {
+        std::cerr << "Pass";
+    } else {
+        std::string s;
+        std::string level_str = "-";
+        if (result.depth == SEARCH_BOOK) {
+            level_str = "Book";
+        } else if (options->time_allocated_seconds == TIME_NOT_ALLOCATED) {
+            level_str = std::to_string(result.level);
+        }
+        std::string depth_str = "-";
+        if (result.depth != SEARCH_BOOK) {
+            depth_str = std::to_string(result.depth) + "@" + std::to_string(result.probability) + "%";
+        }
+        std::cerr << "level " << level_str << " depth " << depth_str << " " << idx_to_coord(result.policy) << " " << result.value;
+    }
+    std::cerr << " elapsed " << ms_to_time(result.time) << " nodes " << result.nodes << " nps " << result.nps;
+    std::cerr << " remaining time " << ms_to_time(state->remaining_time_msec_black) << " / " << ms_to_time(state->remaining_time_msec_white);
+    std::cerr << std::endl;
+}
+
+inline void print_search_result(Search_result result, const Options *options, const State *state) {
+    print_search_result_head();
+    print_search_result_body(result, options, state);
+}
+
+void print_search_result_quiet(Search_result result, const Options *options) {
+    if (result.policy == MOVE_PASS) {
+        std::cout << "ps";
+    } else {
+        std::cout << idx_to_coord(result.policy);
+    }
+    if (options->show_value) {
+        std::cout << " " << result.value;
+    }
+    std::cout << std::endl;
+}
+
+inline void print_analyze_body(Analyze_result result, int ply, int player, std::string judge) {
+    std::string s;
+    std::cout << "|";
+    std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << ply;
+    std::cout << "|";
+    if (player == BLACK)
+        std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << "Black";
+    else
+        std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << "White";
+    std::cout << "|";
+    std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << idx_to_coord(result.played_move);
+    std::cout << "|";
+    if (result.played_depth == SEARCH_BOOK)
+        std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << "Book";
+    else{
+        s = std::to_string(result.played_depth) + "@" + std::to_string(result.played_probability) + "%";
+        std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << s;
+    }
+    std::cout << "|";
+    if (result.played_score >= 0)
+        s = "+" + std::to_string(result.played_score);
+    else
+        s = std::to_string(result.played_score);
+    std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << s;
+    std::cout << "|";
+    if (result.alt_move != -1) {
+        std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << idx_to_coord(result.alt_move);
+        std::cout << "|";
+        if (result.alt_depth == SEARCH_BOOK)
+            std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << "Book";
+        else{
+            s = std::to_string(result.alt_depth) + "@" + std::to_string(result.alt_probability) + "%";
+            std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << s;
+        }
+        std::cout << "|";
+        if (result.alt_score >= 0)
+            s = "+" + std::to_string(result.alt_score);
+        else
+            s = std::to_string(result.alt_score);
+        std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << s;
+        std::cout << "|";
+    } else{
+        std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << "None";
+        std::cout << "|";
+        std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << "";
+        std::cout << "|";
+        std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << "";
+        std::cout << "|";
+    }
+    std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << judge;
+    std::cout << "|";
+    std::cout << std::endl;
+}
+
+inline void print_analyze_head() {
+    std::cout << "|";
+    std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << "Ply";
+    std::cout << "|";
+    std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << "Player";
+    std::cout << "|";
+    std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << "Played";
+    std::cout << "|";
+    std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << "Depth";
+    std::cout << "|";
+    std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << "Score";
+    std::cout << "|";
+    std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << "Alternative";
+    std::cout << "|";
+    std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << "Depth";
+    std::cout << "|";
+    std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << "Score";
+    std::cout << "|";
+    std::cout << std::right << std::setw(ANALYZE_TAB_SIZE) << "Judge";
+    std::cout << "|";
+    std::cout << std::endl;
+}
+
+inline void print_analyze_foot(Analyze_summary summary[]) {
+    std::cout << std::endl;
+    std::cout << "|";
+    std::cout << std::right << std::setw(ANALYZE_SUMMARY_TAB_SIZE) << "Player";
+    std::cout << "|";
+    std::cout << std::right << std::setw(ANALYZE_SUMMARY_TAB_SIZE) << "Disagree";
+    std::cout << "|";
+    std::cout << std::right << std::setw(ANALYZE_SUMMARY_TAB_SIZE) << "Disagree Loss";
+    std::cout << "|";
+    std::cout << std::right << std::setw(ANALYZE_SUMMARY_TAB_SIZE) << "Disagree Rate";
+    std::cout << "|";
+    std::cout << std::right << std::setw(ANALYZE_SUMMARY_TAB_SIZE) << "Mistake";
+    std::cout << "|";
+    std::cout << std::right << std::setw(ANALYZE_SUMMARY_TAB_SIZE) << "Mistake Loss";
+    std::cout << "|";
+    std::cout << std::right << std::setw(ANALYZE_SUMMARY_TAB_SIZE) << "Mistake Rate";
+    std::cout << "|";
+    std::cout << std::right << std::setw(ANALYZE_SUMMARY_TAB_SIZE) << "Avg. Error";
+    std::cout << "|";
+    std::cout << std::endl;
+    std::string s;
+    for (int i = 0; i < 2; ++i) {
+        std::cout << "|";
+        if (i == BLACK)
+            std::cout << std::right << std::setw(ANALYZE_SUMMARY_TAB_SIZE) << "Black";
+        else
+            std::cout << std::right << std::setw(ANALYZE_SUMMARY_TAB_SIZE) << "White";
+        std::cout << "|";
+        std::stringstream ss_disagree;
+        ss_disagree << std::right << std::setw(2) << summary[i].n_disagree;
+        ss_disagree << " / ";
+        ss_disagree << std::right << std::setw(2) << summary[i].n_ply;
+        std::cout << std::right << std::setw(ANALYZE_SUMMARY_TAB_SIZE) << ss_disagree.str();
+        std::cout << "|";
+        std::cout << std::right << std::setw(ANALYZE_SUMMARY_TAB_SIZE) << summary[i].sum_disagree;
+        std::cout << "|";
+        std::cout << std::right << std::setw(ANALYZE_SUMMARY_TAB_SIZE) << std::fixed << std::setprecision(3) << ((double)summary[i].n_disagree / summary[i].n_ply);
+        std::cout << "|";
+        std::stringstream ss_mistake;
+        ss_mistake << std::right << std::setw(2) << summary[i].n_mistake;
+        ss_mistake << " / ";
+        ss_mistake << std::right << std::setw(2) << summary[i].n_ply;
+        std::cout << std::right << std::setw(ANALYZE_SUMMARY_TAB_SIZE) << ss_mistake.str();
+        std::cout << "|";
+        std::cout << std::right << std::setw(ANALYZE_SUMMARY_TAB_SIZE) << summary[i].sum_mistake;
+        std::cout << "|";
+        std::cout << std::right << std::setw(ANALYZE_SUMMARY_TAB_SIZE) << std::fixed << std::setprecision(3) << ((double)summary[i].n_mistake / summary[i].n_ply);
+        std::cout << "|";
+        std::cout << std::right << std::setw(ANALYZE_SUMMARY_TAB_SIZE) << std::fixed << std::setprecision(3) << ((double)(summary[i].sum_disagree + summary[i].sum_mistake) / summary[i].n_ply);
+        std::cout << "|";
+        std::cout << std::endl;
+    }
+}
+
+void print_transcript(std::vector<Board> boards) {
+    for (int i = 0; i < (int)boards.size() - 1; ++i) {
+        Board n_board = boards[i];
+        uint64_t played_board = (n_board.player | n_board.opponent) ^ (boards[i + 1].player | boards[i + 1].opponent);
+        if (pop_count_ull(played_board) == 1) {
+            uint_fast8_t played_move = ctz(played_board);
+            std::cout << idx_to_coord(played_move);
+        }
+    }
+    std::cout << std::endl;
+}
+
+void print_special_commandline_options(std::vector<Commandline_option> commandline_options) {
+    if (find_commandline_option(commandline_options, ID_VERSION)) {
+        print_version();
+        std::exit(0);
+    } else if (find_commandline_option(commandline_options, ID_HELP)) {
+        print_help();
+        std::exit(0);
+    } else if (find_commandline_option(commandline_options, ID_LEVEL_INFO)) {
+        print_level_info();
+        std::exit(0);
+    } else if (find_commandline_option(commandline_options, ID_PERFT)) {
+        bit_init();
+        mobility_init();
+        flip_init();
+        perft_commandline(get_commandline_option_arg(commandline_options, ID_PERFT));
+        std::exit(0);
+    }
+}
+
+void execute_special_commandline_tasks(std::vector<Commandline_option> commandline_options, Options *options, State *state) {
+    if (find_commandline_option(commandline_options, ID_SOLVE)) {
+        solve_problems(get_commandline_option_arg(commandline_options, ID_SOLVE), options, state);
+        std::exit(0);
+    } else if (find_commandline_option(commandline_options, ID_SELF_PLAY)) {
+        self_play(get_commandline_option_arg(commandline_options, ID_SELF_PLAY), options, state);
+        std::exit(0);
+    } else if (find_commandline_option(commandline_options, ID_SELF_PLAY_LINE)) {
+        self_play_line(get_commandline_option_arg(commandline_options, ID_SELF_PLAY_LINE), options, state);
+        std::exit(0);
+    } else if (find_commandline_option(commandline_options, ID_SELF_PLAY_BOARD)) {
+        self_play_board(get_commandline_option_arg(commandline_options, ID_SELF_PLAY_BOARD), options, state);
+        std::exit(0);
+    } else if (find_commandline_option(commandline_options, ID_LOSSLESS_LINES)) {
+        self_play_board_lossless_lines(get_commandline_option_arg(commandline_options, ID_LOSSLESS_LINES), options, state);
+        std::exit(0);
+    } else if (find_commandline_option(commandline_options, ID_MINIMAX)) {
+        minimax_commandline(get_commandline_option_arg(commandline_options, ID_MINIMAX));
+        std::exit(0);
+    } else if (find_commandline_option(commandline_options, ID_SOLVE_PARALLEL_TRANSCRIPT)) {
+        solve_problems_transcript_parallel(get_commandline_option_arg(commandline_options, ID_SOLVE_PARALLEL_TRANSCRIPT), options, state);
+        std::exit(0);
+    } else if (find_commandline_option(commandline_options, ID_SOLVE_RANDOM)) {
+        solve_random(get_commandline_option_arg(commandline_options, ID_SOLVE_RANDOM), options, state);
+        std::exit(0);
+    }
+#if INCLUDE_GGS
+    else if (find_commandline_option(commandline_options, ID_GGS)) {
+        ggs_client(options);
+        std::exit(0);
+    }
+#endif
+}
